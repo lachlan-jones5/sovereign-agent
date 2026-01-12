@@ -1,0 +1,19 @@
+{
+  "openrouter_api_key": "sk-or-v1-your-api-key-here",
+  "site_url": "https://mycompany.internal",
+  "site_name": "MyCompany",
+
+  "models": {
+    "orchestrator": "deepseek/deepseek-v3",
+    "planner": "anthropic/claude-opus-4.5",
+    "librarian": "google/gemini-3-flash",
+    "fallback": "meta-llama/llama-3.3-70b-instruct"
+  },
+
+  "preferences": {
+    "ultrawork_max_iterations": 50,
+    "dcp_turn_protection": 2,
+    "dcp_error_retention_turns": 4,
+    "dcp_nudge_frequency": 10
+  }
+}

@@ -1,0 +1,6 @@
+[submodule "vendor/oh-my-opencode"]
+	path = vendor/oh-my-opencode
+	url = https://github.com/lachlan-jones5/oh-my-opencode.git
+[submodule "vendor/opencode"]
+	path = vendor/opencode
+	url = https://github.com/lachlan-jones5/opencode.git

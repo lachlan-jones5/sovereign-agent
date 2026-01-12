@@ -1,0 +1,22 @@
+{
+  "enabled": true,
+  "debug": false,
+  "pruneNotification": "minimal",
+  "turnProtection": {
+    "enabled": true,
+    "turns": {{DCP_TURN_PROTECTION}}
+  },
+  "strategies": {
+    "deduplication": true,
+    "supersedeWrites": true,
+    "purgeErrors": {
+      "enabled": true,
+      "turns": {{DCP_ERROR_RETENTION_TURNS}}
+    }
+  },
+  "tools": {
+    "nudgeEnabled": true,
+    "nudgeFrequency": {{DCP_NUDGE_FREQUENCY}},
+    "protectedTools": ["task", "plan", "user_feedback"]
+  }
+}

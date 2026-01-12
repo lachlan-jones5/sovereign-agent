@@ -1,0 +1,28 @@
+{
+  "theme": "opencode",
+  "plugin": [
+    "@tarquinen/opencode-dcp@latest",
+    "oh-my-opencode"
+  ],
+  "provider": {
+    "openrouter": {
+      "apiKey": "{{OPENROUTER_API_KEY}}",
+      "model": "{{ORCHESTRATOR_MODEL}}",
+      "options": {
+        "zdr": true,
+        "site_url": "{{SITE_URL}}",
+        "site_name": "{{SITE_NAME}}"
+      }
+    }
+  },
+  "models": {
+    "default": "openrouter/{{ORCHESTRATOR_MODEL}}",
+    "planner": "openrouter/{{PLANNER_MODEL}}",
+    "librarian": "openrouter/{{LIBRARIAN_MODEL}}"
+  },
+  "tools": {
+    "write": true,
+    "bash": true,
+    "mcp": true
+  }
+}

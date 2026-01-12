@@ -1,0 +1,42 @@
+{
+  "agents": {
+    "Sisyphus": {
+      "model": "{{ORCHESTRATOR_MODEL}}"
+    },
+    "oracle": {
+      "model": "{{PLANNER_MODEL}}"
+    },
+    "librarian": {
+      "model": "{{LIBRARIAN_MODEL}}"
+    },
+    "explore": {
+      "model": "{{LIBRARIAN_MODEL}}"
+    },
+    "frontend-ui-ux-engineer": {
+      "model": "{{ORCHESTRATOR_MODEL}}"
+    },
+    "document-writer": {
+      "model": "{{LIBRARIAN_MODEL}}"
+    },
+    "multimodal-looker": {
+      "model": "{{LIBRARIAN_MODEL}}"
+    }
+  },
+  "sisyphus_agent": {
+    "max_iterations": {{ULTRAWORK_MAX_ITERATIONS}}
+  },
+  "experimental": {
+    "dynamic_context_pruning": {
+      "enabled": true,
+      "turn_protection": {{DCP_TURN_PROTECTION}},
+      "strategies": {
+        "supersede_writes": true,
+        "deduplicate_reads": true,
+        "purge_old_errors": {
+          "enabled": true,
+          "after_turns": {{DCP_ERROR_RETENTION_TURNS}}
+        }
+      }
+    }
+  }
+}
