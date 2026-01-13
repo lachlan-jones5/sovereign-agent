@@ -25,7 +25,7 @@ Sovereign Agent uses a **relay server** to keep your API keys secure on a truste
                                                               └────────────┘
 ```
 
-**Key insight**: Your laptop can SSH to both machines, so it acts as a bridge using a **reverse tunnel**. No SSH keys or sovereign-agent setup needed on the Work VM.
+**Key insight**: Your laptop can SSH to both machines, so it acts as a bridge using a **reverse tunnel**. The Work VM downloads everything through the tunnel - no direct internet access to GitHub needed.
 
 ## Quick Start
 
@@ -62,7 +62,7 @@ curl http://localhost:8080/health
 Your laptop bridges the Work VM and the relay server. Run this **on your laptop**:
 
 ```bash
-# Using the helper script
+# Using the helper script (if you have the repo cloned)
 ./scripts/tunnel.sh workvm pi-hostname
 
 # Or directly
@@ -77,25 +77,23 @@ Replace:
 - Makes port 8080 on the Work VM forward through your laptop to the relay
 - `-N` - Just create the tunnel, don't open a shell
 
-### Step 3: Set Up the Work VM
+### Step 3: Set Up the Work VM (via tunnel)
+
+With the tunnel running, the Work VM can download everything through `localhost:8080` - no direct internet access to GitHub needed.
 
 On the Work VM:
 
 ```bash
-# One-liner setup (installs OpenCode, configures relay)
-curl -fsSL https://raw.githubusercontent.com/lachlan-jones5/sovereign-agent/master/scripts/setup-client.sh | bash
+# Download and run setup through the tunnel
+curl -fsSL http://localhost:8080/setup | bash
 ```
 
-Or manually: install [OpenCode](https://github.com/sst/opencode) and configure `~/.config/opencode/config.json`:
+This downloads the sovereign-agent bundle from your relay server, installs OpenCode, and configures everything.
 
-```json
-{
-  "provider": {
-    "openrouter": {
-      "baseURL": "http://localhost:8080/api/v1"
-    }
-  }
-}
+**What happens:**
+1. `curl localhost:8080/setup` - Gets setup script from relay (through tunnel)
+2. Script calls `curl localhost:8080/bundle.tar.gz` - Downloads fresh repo bundle
+3. Runs `install.sh` - Installs OpenCode with agents, plugins, etc.
 ```
 
 ### Step 4: Run OpenCode
