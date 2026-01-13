@@ -84,29 +84,68 @@ cp config.client.example config.json
 ./lib/ssh-relay.sh run pi-relay
 ```
 
-### Step 3: Configure SSH (Required for Remote Relay)
+### Step 3: Configure SSH on the Client
 
-Add your relay server to `~/.ssh/config` on the client machine:
+The **client machine** (where OpenCode runs) needs to know how to reach the **server** (where the relay runs). Add an SSH config entry on the client.
 
-```ssh-config
-Host pi-relay
-    HostName your-pi.local
-    User pi
-    IdentityFile ~/.ssh/pi_key
-    ServerAliveInterval 30
+**Example scenario:**
+```
+┌──────────────┐         ┌──────────────┐         ┌──────────────┐
+│   Client     │   SSH   │   Server     │  HTTPS  │  OpenRouter  │
+│   (work VM)  │────────▶│   (razer)    │────────▶│     API      │
+│   OpenCode   │  tunnel │   relay:8080 │         │              │
+└──────────────┘         └──────────────┘         └──────────────┘
 ```
 
-For multi-hop setups (e.g., through a laptop):
+**On the client machine**, edit `~/.ssh/config`:
 
 ```ssh-config
-Host laptop
-    HostName laptop.local
-    User youruser
+# Name this whatever you want - you'll use it in the ssh-relay.sh command
+Host relay-server
+    HostName 192.168.1.50        # IP or hostname of your relay server
+    User lachlan                  # Your username on the relay server
+    IdentityFile ~/.ssh/id_rsa   # Path to your private key (on the client)
+    ServerAliveInterval 30        # Keep connection alive
+```
 
-Host pi-relay
-    HostName pi.local
-    User pi
-    ProxyJump laptop
+Then test the connection from the client:
+
+```bash
+# On the client machine
+ssh relay-server              # Should connect to your relay server
+curl localhost:8080/health    # Won't work yet (no tunnel)
+```
+
+Now you can use the SSH host name with the relay script:
+
+```bash
+./lib/ssh-relay.sh run relay-server
+```
+
+This creates an SSH tunnel that forwards `localhost:8080` on the client to `localhost:8080` on the server.
+
+**Multi-hop example** (client → jump host → relay server):
+
+If the client can't reach the relay directly but can reach an intermediate machine:
+
+```
+┌──────────────┐         ┌──────────────┐         ┌──────────────┐
+│   Client     │   SSH   │  Jump host   │   SSH   │   Server     │
+│   (work VM)  │────────▶│  (bastion)   │────────▶│   (razer)    │
+└──────────────┘         └──────────────┘         └──────────────┘
+```
+
+```ssh-config
+# First, define the jump host
+Host jump
+    HostName bastion.company.com
+    User myuser
+
+# Then define the relay server, proxying through the jump host
+Host relay-server
+    HostName 192.168.1.50        # Internal IP of relay (reachable from jump)
+    User lachlan
+    ProxyJump jump                # Connect via the jump host first
 ```
 
 ---
