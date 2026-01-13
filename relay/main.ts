@@ -199,7 +199,7 @@ Bun.serve({
 # Sovereign Agent Client Setup (via relay tunnel)
 # This script downloads everything through the tunnel - no direct internet access needed.
 
-set -euo pipefail
+set -uo pipefail
 
 # Use the port this script was fetched from (injected by relay), or env var, or default
 RELAY_PORT="\${RELAY_PORT:-${RELAY_PORT}}"
@@ -218,12 +218,75 @@ fi
 echo "Relay connection OK"
 echo ""
 
+# Check for required tools and install if missing FIRST
+echo "Checking dependencies..."
+
+# Install Bun if missing
+if ! command -v bun &>/dev/null; then
+    echo "Installing Bun..."
+    if curl -fsSL https://bun.sh/install | bash; then
+        export BUN_INSTALL="\$HOME/.bun"
+        export PATH="\$BUN_INSTALL/bin:\$PATH"
+    else
+        echo "Warning: Bun installation failed - will try again in install.sh"
+    fi
+fi
+
+# Install Go if missing (user-local, no sudo required)
+if ! command -v go &>/dev/null; then
+    echo "Installing Go..."
+    GO_VERSION="1.23.4"
+    GO_INSTALL_DIR="\$HOME/.local/go"
+    ARCH=\$(uname -m)
+    case "\$ARCH" in
+        x86_64) GOARCH="amd64" ;;
+        aarch64|arm64) GOARCH="arm64" ;;
+        *) 
+            echo "Warning: Unsupported architecture \$ARCH for Go auto-install"
+            echo "Please install Go manually: https://go.dev/doc/install"
+            GOARCH=""
+            ;;
+    esac
+    if [[ -n "\$GOARCH" ]]; then
+        mkdir -p "\$HOME/.local"
+        if curl -fsSL "https://go.dev/dl/go\${GO_VERSION}.linux-\${GOARCH}.tar.gz" | tar -C "\$HOME/.local" -xzf -; then
+            export PATH="\$GO_INSTALL_DIR/bin:\$PATH"
+            echo "export PATH=\"\$GO_INSTALL_DIR/bin:\\\$PATH\"" >> "\$HOME/.bashrc"
+            echo "Go installed to \$GO_INSTALL_DIR"
+        else
+            echo "Warning: Go installation failed"
+            echo "Please install Go manually: https://go.dev/doc/install"
+        fi
+    fi
+fi
+
+# Install jq if missing
+if ! command -v jq &>/dev/null; then
+    echo "Installing jq..."
+    if command -v apt-get &>/dev/null; then
+        sudo apt-get update && sudo apt-get install -y jq 2>/dev/null || echo "Warning: jq installation failed (may need sudo)"
+    elif command -v apk &>/dev/null; then
+        sudo apk add jq 2>/dev/null || echo "Warning: jq installation failed (may need sudo)"
+    elif command -v dnf &>/dev/null; then
+        sudo dnf install -y jq 2>/dev/null || echo "Warning: jq installation failed (may need sudo)"
+    else
+        echo "Warning: Could not install jq - please install manually"
+    fi
+fi
+
+echo ""
+
 # Download and extract the bundle
 echo "Downloading sovereign-agent bundle..."
 mkdir -p "\$INSTALL_DIR"
 cd "\$INSTALL_DIR"
 
-curl -sf "http://localhost:\$RELAY_PORT/bundle.tar.gz" | tar -xzf -
+if ! curl -sf "http://localhost:\$RELAY_PORT/bundle.tar.gz" | tar -xzf -; then
+    echo "Error: Bundle download/extraction failed"
+    echo "Try running manually:"
+    echo "  curl -sf http://localhost:\$RELAY_PORT/bundle.tar.gz | tar -xzvf -"
+    exit 1
+fi
 
 # Create client config
 if [[ ! -f config.json ]]; then
@@ -248,47 +311,6 @@ if [[ ! -f config.json ]]; then
   }
 }
 CONFIGEOF
-fi
-
-# Check for required tools and install if missing
-echo ""
-echo "Checking dependencies..."
-
-# Install Bun if missing
-if ! command -v bun &>/dev/null; then
-    echo "Installing Bun..."
-    curl -fsSL https://bun.sh/install | bash
-    export BUN_INSTALL="\$HOME/.bun"
-    export PATH="\$BUN_INSTALL/bin:\$PATH"
-fi
-
-# Install Go if missing
-if ! command -v go &>/dev/null; then
-    echo "Installing Go..."
-    GO_VERSION="1.23.4"
-    ARCH=\$(uname -m)
-    case "\$ARCH" in
-        x86_64) GOARCH="amd64" ;;
-        aarch64|arm64) GOARCH="arm64" ;;
-        *) echo "Unsupported architecture: \$ARCH"; exit 1 ;;
-    esac
-    curl -fsSL "https://go.dev/dl/go\${GO_VERSION}.linux-\${GOARCH}.tar.gz" | sudo tar -C /usr/local -xzf -
-    export PATH="/usr/local/go/bin:\$PATH"
-    echo 'export PATH="/usr/local/go/bin:\$PATH"' >> "\$HOME/.bashrc"
-fi
-
-# Install jq if missing
-if ! command -v jq &>/dev/null; then
-    echo "Installing jq..."
-    if command -v apt-get &>/dev/null; then
-        sudo apt-get update && sudo apt-get install -y jq
-    elif command -v apk &>/dev/null; then
-        sudo apk add jq
-    elif command -v dnf &>/dev/null; then
-        sudo dnf install -y jq
-    else
-        echo "Warning: Could not install jq - please install manually"
-    fi
 fi
 
 # Verify bundle was extracted correctly
