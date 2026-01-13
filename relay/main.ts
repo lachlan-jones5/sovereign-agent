@@ -250,27 +250,60 @@ if [[ ! -f config.json ]]; then
 CONFIGEOF
 fi
 
-# Check for required tools
+# Check for required tools and install if missing
 echo ""
 echo "Checking dependencies..."
 
-if ! command -v go &>/dev/null; then
-    echo "Warning: 'go' not found - needed for OpenCode"
-    echo "Install Go: https://go.dev/doc/install"
-fi
-
+# Install Bun if missing
 if ! command -v bun &>/dev/null; then
-    echo "Warning: 'bun' not found - needed for oh-my-opencode"
-    echo "Bun will be installed during install.sh if missing"
+    echo "Installing Bun..."
+    curl -fsSL https://bun.sh/install | bash
+    export BUN_INSTALL="\$HOME/.bun"
+    export PATH="\$BUN_INSTALL/bin:\$PATH"
 fi
 
+# Install Go if missing
+if ! command -v go &>/dev/null; then
+    echo "Installing Go..."
+    GO_VERSION="1.23.4"
+    ARCH=\$(uname -m)
+    case "\$ARCH" in
+        x86_64) GOARCH="amd64" ;;
+        aarch64|arm64) GOARCH="arm64" ;;
+        *) echo "Unsupported architecture: \$ARCH"; exit 1 ;;
+    esac
+    curl -fsSL "https://go.dev/dl/go\${GO_VERSION}.linux-\${GOARCH}.tar.gz" | sudo tar -C /usr/local -xzf -
+    export PATH="/usr/local/go/bin:\$PATH"
+    echo 'export PATH="/usr/local/go/bin:\$PATH"' >> "\$HOME/.bashrc"
+fi
+
+# Install jq if missing
 if ! command -v jq &>/dev/null; then
-    echo "Warning: 'jq' not found - needed for config generation"
+    echo "Installing jq..."
+    if command -v apt-get &>/dev/null; then
+        sudo apt-get update && sudo apt-get install -y jq
+    elif command -v apk &>/dev/null; then
+        sudo apk add jq
+    elif command -v dnf &>/dev/null; then
+        sudo dnf install -y jq
+    else
+        echo "Warning: Could not install jq - please install manually"
+    fi
+fi
+
+# Verify bundle was extracted correctly
+if [[ ! -f install.sh ]]; then
+    echo "Error: Bundle extraction failed - install.sh not found"
+    echo "Try running manually:"
+    echo "  mkdir -p \$INSTALL_DIR && cd \$INSTALL_DIR"
+    echo "  curl -sf http://localhost:\$RELAY_PORT/bundle.tar.gz | tar -xzvf -"
+    exit 1
 fi
 
 # Run install
 echo ""
 echo "Running install.sh..."
+chmod +x install.sh
 ./install.sh
 
 echo ""

@@ -448,6 +448,41 @@ else
     pass "setup endpoint uses dynamic RELAY_PORT default"
 fi
 
+# Test 49: setup script auto-installs Bun
+if grep -q 'Installing Bun\|bun.sh/install' "$PROJECT_DIR/relay/main.ts"; then
+    pass "setup script auto-installs Bun"
+else
+    fail "setup script should auto-install Bun"
+fi
+
+# Test 50: setup script auto-installs Go
+if grep -q 'Installing Go\|go.dev/dl' "$PROJECT_DIR/relay/main.ts"; then
+    pass "setup script auto-installs Go"
+else
+    fail "setup script should auto-install Go"
+fi
+
+# Test 51: setup script auto-installs jq
+if grep -q 'Installing jq\|apt-get.*jq\|apk add jq' "$PROJECT_DIR/relay/main.ts"; then
+    pass "setup script auto-installs jq"
+else
+    fail "setup script should auto-install jq"
+fi
+
+# Test 52: setup script verifies bundle extraction
+if grep -q 'install.sh not found\|Bundle extraction failed' "$PROJECT_DIR/relay/main.ts"; then
+    pass "setup script verifies bundle extraction"
+else
+    fail "setup script should verify bundle extraction succeeded"
+fi
+
+# Test 53: setup script makes install.sh executable
+if grep -q 'chmod.*install.sh' "$PROJECT_DIR/relay/main.ts"; then
+    pass "setup script makes install.sh executable"
+else
+    fail "setup script should chmod +x install.sh"
+fi
+
 echo
 echo "========================================="
 echo "Relay Test Results"
