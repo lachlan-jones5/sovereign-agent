@@ -156,6 +156,7 @@ let totalTokensOut = 0;
 Bun.serve({
   port: RELAY_PORT,
   hostname: RELAY_HOST,
+  idleTimeout: 120, // 2 minutes for large bundle downloads
 
   async fetch(req: Request): Promise<Response> {
     const url = new URL(req.url);

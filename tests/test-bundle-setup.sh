@@ -203,6 +203,20 @@ else
     fail "Bundle endpoint should include repo_path in error response"
 fi
 
+# Test: Bun.serve has increased idleTimeout for large bundles
+if grep -q 'idleTimeout' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Bun.serve has idleTimeout configured"
+else
+    fail "Bun.serve should have idleTimeout configured for large bundle downloads"
+fi
+
+# Test: idleTimeout is at least 60 seconds
+if grep -q 'idleTimeout.*[6-9][0-9]\|idleTimeout.*1[0-9][0-9]' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "idleTimeout is at least 60 seconds"
+else
+    fail "idleTimeout should be at least 60 seconds for bundle downloads"
+fi
+
 # Test: Bundle uses tar with gzip compression
 if grep -q "tar -czf\|tar.*-c.*-z" "$PROJECT_ROOT/relay/main.ts"; then
     pass "Bundle uses tar with gzip compression"
