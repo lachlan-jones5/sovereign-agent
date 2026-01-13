@@ -168,6 +168,41 @@ else
     fail "Bundle endpoint should exist at /bundle.tar.gz"
 fi
 
+# Test: Bundle endpoint logs REPO_PATH
+if grep -q 'REPO_PATH.*log\|log.*REPO_PATH' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Bundle endpoint logs REPO_PATH for debugging"
+else
+    fail "Bundle endpoint should log REPO_PATH for debugging"
+fi
+
+# Test: Bundle endpoint verifies essential files exist
+if grep -q 'install\.sh.*lib.*relay\|ls.*install\.sh' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Bundle endpoint verifies essential files exist"
+else
+    fail "Bundle endpoint should verify essential files exist"
+fi
+
+# Test: Bundle endpoint checks for empty tarball
+if grep -q 'tarball\.length === 0\|tarball is empty\|Bundle is empty' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Bundle endpoint checks for empty tarball"
+else
+    fail "Bundle endpoint should check for empty tarball"
+fi
+
+# Test: Bundle endpoint returns 500 error with details on failure
+if grep -q 'status: 500\|500.*error' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Bundle endpoint returns 500 error on failure"
+else
+    fail "Bundle endpoint should return 500 error on failure"
+fi
+
+# Test: Bundle endpoint includes repo_path in error response
+if grep -q 'repo_path.*REPO_PATH\|REPO_PATH.*error' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Bundle endpoint includes repo_path in error response"
+else
+    fail "Bundle endpoint should include repo_path in error response"
+fi
+
 # Test: Bundle uses tar with gzip compression
 if grep -q "tar -czf\|tar.*-c.*-z" "$PROJECT_ROOT/relay/main.ts"; then
     pass "Bundle uses tar with gzip compression"
