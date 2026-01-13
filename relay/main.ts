@@ -223,7 +223,7 @@ echo "Downloading sovereign-agent bundle..."
 mkdir -p "\$INSTALL_DIR"
 cd "\$INSTALL_DIR"
 
-curl -sf "http://localhost:\$RELAY_PORT/bundle.tar.gz" | tar -xzf - --strip-components=1
+curl -sf "http://localhost:\$RELAY_PORT/bundle.tar.gz" | tar -xzf -
 
 # Create client config
 if [[ ! -f config.json ]]; then
