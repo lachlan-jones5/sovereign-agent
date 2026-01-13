@@ -531,6 +531,40 @@ else
     fail "Bundle endpoint should exclude config.json"
 fi
 
+# Test 60: Dockerfile.relay clones vendor submodules
+if grep -q 'git clone.*opencode\|git clone.*oh-my-opencode' "$PROJECT_DIR/Dockerfile.relay"; then
+    pass "Dockerfile.relay clones vendor submodules"
+else
+    fail "Dockerfile.relay should clone vendor submodules"
+fi
+
+# Test 61: Dockerfile.relay removes .git from cloned submodules
+if grep -q 'rm -rf vendor.*\.git' "$PROJECT_DIR/Dockerfile.relay"; then
+    pass "Dockerfile.relay removes .git from cloned submodules"
+else
+    fail "Dockerfile.relay should remove .git from cloned submodules"
+fi
+
+echo
+echo "========================================="
+echo "install.sh Tests"
+echo "========================================="
+echo
+
+# Test 62: install.sh handles non-git repo installation
+if grep -q 'Not a git repo\|not a git repo\|\.git.*skip' "$PROJECT_DIR/install.sh"; then
+    pass "install.sh handles non-git repo installation"
+else
+    fail "install.sh should handle non-git repo installation (bundle installs)"
+fi
+
+# Test 63: install.sh checks vendor directories exist
+if grep -q 'VENDOR_DIR.*opencode\|vendor.*opencode' "$PROJECT_DIR/install.sh"; then
+    pass "install.sh checks vendor directories exist"
+else
+    fail "install.sh should check vendor directories exist"
+fi
+
 echo
 echo "========================================="
 echo "Relay Test Results"

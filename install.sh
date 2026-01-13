@@ -101,6 +101,17 @@ if [[ ! "$CONFIG_FILE" = /* ]]; then
 fi
 
 check_submodules() {
+    # Skip if not a git repo (e.g., when installed from bundle)
+    if [[ ! -d "$SCRIPT_DIR/.git" ]]; then
+        log_info "Not a git repo - skipping submodule check"
+        # Verify vendor directories exist (should be included in bundle)
+        if [[ ! -d "$VENDOR_DIR/opencode" ]] || [[ ! -d "$VENDOR_DIR/oh-my-opencode" ]]; then
+            log_error "Vendor directories missing. If installed from bundle, the bundle may be incomplete."
+            exit 1
+        fi
+        return
+    fi
+    
     if [[ ! -d "$VENDOR_DIR/opencode/.git" ]] || [[ ! -d "$VENDOR_DIR/oh-my-opencode/.git" ]]; then
         log_info "Initializing git submodules..."
         git -C "$SCRIPT_DIR" submodule update --init --recursive
