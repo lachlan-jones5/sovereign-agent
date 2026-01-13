@@ -10,6 +10,9 @@
 # Or with custom port:
 #   RELAY_PORT=8081 OPENROUTER_API_KEY=sk-or-... bash <(curl -fsSL ...)
 #
+# Or with custom host binding (0.0.0.0 for external access):
+#   RELAY_HOST=0.0.0.0 RELAY_PORT=8081 OPENROUTER_API_KEY=sk-or-... bash <(curl -fsSL ...)
+#
 # This script:
 #   1. Clones the repo into current directory (no submodules - fast)
 #   2. Prompts for your OpenRouter API key (or uses env var)
@@ -19,6 +22,7 @@
 set -euo pipefail
 
 RELAY_PORT="${RELAY_PORT:-8080}"
+RELAY_HOST="${RELAY_HOST:-127.0.0.1}"
 INSTALL_DIR="${INSTALL_DIR:-$PWD/sovereign-agent}"
 API_KEY="${OPENROUTER_API_KEY:-}"
 
@@ -108,7 +112,7 @@ echo "Starting relay on port $RELAY_PORT..."
 
 if $HAS_DOCKER; then
     echo "Using Docker..."
-    RELAY_PORT=$RELAY_PORT docker compose -f docker-compose.relay.yml up -d
+    RELAY_HOST=$RELAY_HOST RELAY_PORT=$RELAY_PORT docker compose -f docker-compose.relay.yml up -d
     echo ""
     echo "Relay started! Check status:"
     echo "  docker logs sovereign-relay"
@@ -121,7 +125,7 @@ elif $HAS_BUN; then
     if curl -s "http://localhost:$RELAY_PORT/health" &>/dev/null; then
         echo "Relay already running on port $RELAY_PORT"
     else
-        ./start-relay.sh daemon
+        RELAY_HOST=$RELAY_HOST RELAY_PORT=$RELAY_PORT ./start-relay.sh daemon
         sleep 2
     fi
     

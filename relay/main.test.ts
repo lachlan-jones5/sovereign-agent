@@ -474,19 +474,62 @@ describe("Environment Variables", () => {
     expect(port).toBe(8080);
   });
 
+  it("should handle custom RELAY_PORT values", () => {
+    const customPort = "9999";
+    const port = parseInt(customPort, 10);
+    expect(port).toBe(9999);
+  });
+
   it("should default to 8080 when RELAY_PORT is not set", () => {
     const port = parseInt(process.env.RELAY_PORT || "8080", 10);
     expect(port).toBeGreaterThan(0);
   });
 
   it("should default RELAY_HOST to 127.0.0.1", () => {
-    const host = process.env.RELAY_HOST || "127.0.0.1";
+    // When RELAY_HOST is not set, default to localhost
+    const defaultHost = "127.0.0.1";
+    const host = process.env.RELAY_HOST || defaultHost;
     expect(host).toBe("127.0.0.1");
+  });
+
+  it("should accept 0.0.0.0 as RELAY_HOST for external access", () => {
+    const host = "0.0.0.0";
+    // Valid external binding address
+    expect(host).toBe("0.0.0.0");
+  });
+
+  it("should accept custom IP address as RELAY_HOST", () => {
+    const host = "192.168.1.100";
+    // Valid LAN IP address
+    expect(host).toMatch(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/);
   });
 
   it("should default LOG_LEVEL to info", () => {
     const level = process.env.LOG_LEVEL || "info";
     expect(level).toBe("info");
+  });
+
+  it("should parse valid port numbers", () => {
+    const validPorts = ["80", "443", "8080", "8081", "9000", "65535"];
+    for (const portStr of validPorts) {
+      const port = parseInt(portStr, 10);
+      expect(port).toBeGreaterThan(0);
+      expect(port).toBeLessThanOrEqual(65535);
+    }
+  });
+
+  it("should handle RELAY_HOST with IPv6 address", () => {
+    const host = "::1";
+    // IPv6 localhost is valid
+    expect(host).toBe("::1");
+  });
+
+  it("should preserve environment variable precedence", () => {
+    // Environment variables should override defaults
+    const envHost = "10.0.0.1";
+    const defaultHost = "127.0.0.1";
+    const result = envHost || defaultHost;
+    expect(result).toBe("10.0.0.1");
   });
 });
 

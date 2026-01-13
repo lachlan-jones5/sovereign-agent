@@ -69,6 +69,27 @@ else
     fail "setup-relay.sh should read RELAY_PORT env var"
 fi
 
+# Test: Script reads RELAY_HOST from env
+if grep -q 'RELAY_HOST' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
+    pass "setup-relay.sh reads RELAY_HOST env var"
+else
+    fail "setup-relay.sh should read RELAY_HOST env var"
+fi
+
+# Test: Script has default RELAY_HOST of 127.0.0.1
+if grep -q 'RELAY_HOST:-127.0.0.1\|RELAY_HOST.*127.0.0.1' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
+    pass "setup-relay.sh has default RELAY_HOST 127.0.0.1"
+else
+    fail "setup-relay.sh should have default RELAY_HOST 127.0.0.1"
+fi
+
+# Test: Script passes RELAY_HOST to start-relay.sh
+if grep -q 'RELAY_HOST=\$RELAY_HOST.*start-relay.sh\|RELAY_HOST=.*RELAY_HOST.*start-relay' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
+    pass "setup-relay.sh passes RELAY_HOST to start-relay.sh"
+else
+    fail "setup-relay.sh should pass RELAY_HOST to start-relay.sh"
+fi
+
 # Test: Script reads from /dev/tty for interactive input
 if grep -q '/dev/tty' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
     pass "setup-relay.sh reads from /dev/tty for interactive input"

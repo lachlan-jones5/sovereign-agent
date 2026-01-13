@@ -245,115 +245,192 @@ else
     fail "start-relay.sh has daemon command"
 fi
 
+# Test 21: start-relay.sh exports RELAY_HOST env var
+if grep -q 'export RELAY_HOST=' "$PROJECT_DIR/relay/start-relay.sh"; then
+    pass "start-relay.sh exports RELAY_HOST env var"
+else
+    fail "start-relay.sh exports RELAY_HOST env var"
+fi
+
+# Test 22: start-relay.sh exports RELAY_PORT env var
+if grep -q 'export RELAY_PORT=' "$PROJECT_DIR/relay/start-relay.sh"; then
+    pass "start-relay.sh exports RELAY_PORT env var"
+else
+    fail "start-relay.sh exports RELAY_PORT env var"
+fi
+
+# Test 23: start-relay.sh has default RELAY_HOST of 127.0.0.1
+if grep -q 'RELAY_HOST:-127.0.0.1\|RELAY_HOST.*:-.*127.0.0.1' "$PROJECT_DIR/relay/start-relay.sh"; then
+    pass "start-relay.sh has default RELAY_HOST 127.0.0.1"
+else
+    fail "start-relay.sh has default RELAY_HOST 127.0.0.1"
+fi
+
+# Test 24: start-relay.sh has default RELAY_PORT of 8080
+if grep -q 'RELAY_PORT:-8080\|RELAY_PORT.*:-.*8080' "$PROJECT_DIR/relay/start-relay.sh"; then
+    pass "start-relay.sh has default RELAY_PORT 8080"
+else
+    fail "start-relay.sh has default RELAY_PORT 8080"
+fi
+
+# Test 25: start-relay.sh documents RELAY_HOST in help
+if "$PROJECT_DIR/relay/start-relay.sh" help 2>&1 | grep -q "RELAY_HOST"; then
+    pass "start-relay.sh documents RELAY_HOST in help"
+else
+    fail "start-relay.sh documents RELAY_HOST in help"
+fi
+
+# Test 26: start-relay.sh logs the host it binds to
+if grep -q 'Starting relay on http://\$RELAY_HOST:\$RELAY_PORT\|RELAY_HOST.*RELAY_PORT' "$PROJECT_DIR/relay/start-relay.sh"; then
+    pass "start-relay.sh logs the host it binds to"
+else
+    fail "start-relay.sh logs the host it binds to"
+fi
+
 echo
 echo "========================================="
 echo "Relay TypeScript Tests"
 echo "========================================="
 echo
 
-# Test 21: main.ts imports required modules
+# Test 27: main.ts imports required modules
 if grep -q 'import.*from "fs"' "$PROJECT_DIR/relay/main.ts" || grep -q 'import.*from "bun"' "$PROJECT_DIR/relay/main.ts"; then
     pass "main.ts imports required modules"
 else
     fail "main.ts imports required modules"
 fi
 
-# Test 22: main.ts has health endpoint
+# Test 28: main.ts has health endpoint
 if grep -q '/health' "$PROJECT_DIR/relay/main.ts"; then
     pass "main.ts has health endpoint"
 else
     fail "main.ts has health endpoint"
 fi
 
-# Test 23: main.ts has allowed paths security
+# Test 29: main.ts has allowed paths security
 if grep -q 'ALLOWED_PATHS' "$PROJECT_DIR/relay/main.ts"; then
     pass "main.ts has allowed paths security"
 else
     fail "main.ts has allowed paths security"
 fi
 
-# Test 24: main.ts adds Authorization header
+# Test 30: main.ts adds Authorization header
 if grep -q 'Authorization' "$PROJECT_DIR/relay/main.ts"; then
     pass "main.ts adds Authorization header"
 else
     fail "main.ts adds Authorization header"
 fi
 
-# Test 25: main.ts forwards to openrouter.ai
+# Test 31: main.ts forwards to openrouter.ai
 if grep -q 'openrouter.ai' "$PROJECT_DIR/relay/main.ts"; then
     pass "main.ts forwards to openrouter.ai"
 else
     fail "main.ts forwards to openrouter.ai"
 fi
 
-# Test 26: main.ts has stats endpoint
+# Test 32: main.ts has stats endpoint
 if grep -q '/stats' "$PROJECT_DIR/relay/main.ts"; then
     pass "main.ts has stats endpoint"
 else
     fail "main.ts has stats endpoint"
 fi
 
-# Test 27: main.ts has setup endpoint
+# Test 33: main.ts has setup endpoint
 if grep -q '/setup' "$PROJECT_DIR/relay/main.ts"; then
     pass "main.ts has setup endpoint"
 else
     fail "main.ts has setup endpoint"
 fi
 
-# Test 28: main.ts has bundle endpoint
+# Test 34: main.ts has bundle endpoint
 if grep -q '/bundle.tar.gz' "$PROJECT_DIR/relay/main.ts"; then
     pass "main.ts has bundle endpoint"
 else
     fail "main.ts has bundle endpoint"
 fi
 
-# Test 29: setup endpoint returns shell script content type
+# Test 35: setup endpoint returns shell script content type
 if grep -q 'text/x-shellscript' "$PROJECT_DIR/relay/main.ts"; then
     pass "setup endpoint returns shell script content type"
 else
     fail "setup endpoint returns shell script content type"
 fi
 
-# Test 30: bundle endpoint returns gzip content type
+# Test 36: bundle endpoint returns gzip content type
 if grep -q 'application/gzip' "$PROJECT_DIR/relay/main.ts"; then
     pass "bundle endpoint returns gzip content type"
 else
     fail "bundle endpoint returns gzip content type"
 fi
 
-# Test 31: bundle excludes config.json (contains API key)
+# Test 37: bundle excludes config.json (contains API key)
 if grep -q "exclude.*config.json\|--exclude='config.json'" "$PROJECT_DIR/relay/main.ts"; then
     pass "bundle excludes config.json"
 else
     fail "bundle excludes config.json"
 fi
 
-# Test 32: bundle excludes .git directories
+# Test 38: bundle excludes .git directories
 if grep -q "exclude.*\.git\|--exclude='.git'" "$PROJECT_DIR/relay/main.ts"; then
     pass "bundle excludes .git directories"
 else
     fail "bundle excludes .git directories"
 fi
 
-# Test 33: bundle excludes .env files
+# Test 39: bundle excludes .env files
 if grep -q "exclude.*\.env\|--exclude='.env'" "$PROJECT_DIR/relay/main.ts"; then
     pass "bundle excludes .env files"
 else
     fail "bundle excludes .env files"
 fi
 
-# Test 34: setup script checks relay health
+# Test 40: setup script checks relay health
 if grep -q 'localhost.*RELAY_PORT.*health\|localhost:\$RELAY_PORT/health' "$PROJECT_DIR/relay/main.ts"; then
     pass "setup script checks relay health"
 else
     fail "setup script checks relay health"
 fi
 
-# Test 35: setup script downloads bundle
+# Test 41: setup script downloads bundle
 if grep -q 'bundle.tar.gz' "$PROJECT_DIR/relay/main.ts"; then
     pass "setup script downloads bundle"
 else
     fail "setup script downloads bundle"
+fi
+
+# Test 42: main.ts reads RELAY_HOST from environment
+if grep -q 'process.env.RELAY_HOST\|RELAY_HOST.*process.env' "$PROJECT_DIR/relay/main.ts"; then
+    pass "main.ts reads RELAY_HOST from environment"
+else
+    fail "main.ts reads RELAY_HOST from environment"
+fi
+
+# Test 43: main.ts reads RELAY_PORT from environment
+if grep -q 'process.env.RELAY_PORT\|RELAY_PORT.*process.env' "$PROJECT_DIR/relay/main.ts"; then
+    pass "main.ts reads RELAY_PORT from environment"
+else
+    fail "main.ts reads RELAY_PORT from environment"
+fi
+
+# Test 44: main.ts uses RELAY_HOST in Bun.serve hostname
+if grep -q 'hostname: RELAY_HOST\|hostname:.*RELAY_HOST' "$PROJECT_DIR/relay/main.ts"; then
+    pass "main.ts uses RELAY_HOST in Bun.serve hostname"
+else
+    fail "main.ts uses RELAY_HOST in Bun.serve hostname"
+fi
+
+# Test 45: main.ts uses RELAY_PORT in Bun.serve port
+if grep -q 'port: RELAY_PORT\|port:.*RELAY_PORT' "$PROJECT_DIR/relay/main.ts"; then
+    pass "main.ts uses RELAY_PORT in Bun.serve port"
+else
+    fail "main.ts uses RELAY_PORT in Bun.serve port"
+fi
+
+# Test 46: main.ts logs the host and port at startup
+if grep -q 'Relay listening on http://\${RELAY_HOST}:\${RELAY_PORT}\|RELAY_HOST.*RELAY_PORT' "$PROJECT_DIR/relay/main.ts"; then
+    pass "main.ts logs the host and port at startup"
+else
+    fail "main.ts logs the host and port at startup"
 fi
 
 echo
