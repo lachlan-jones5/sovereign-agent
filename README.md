@@ -22,12 +22,12 @@ Sovereign Agent uses a **client-server relay architecture** to keep your API key
 
 ### Step 1: Set Up the Relay Server
 
-Choose **one** of these methods on your trusted machine (Pi, home server, or laptop):
+The relay server only needs the core repo (no submodules required). Choose **one** method:
 
 #### Option A: Docker (Recommended)
 
 ```bash
-git clone --recurse-submodules --shallow-submodules https://github.com/lachlan-jones5/sovereign-agent.git
+git clone https://github.com/lachlan-jones5/sovereign-agent.git
 cd sovereign-agent
 
 # Create server config with your API key
@@ -41,7 +41,7 @@ docker compose -f docker-compose.relay.yml up -d
 #### Option B: Native (Bun)
 
 ```bash
-git clone --recurse-submodules --shallow-submodules https://github.com/lachlan-jones5/sovereign-agent.git
+git clone https://github.com/lachlan-jones5/sovereign-agent.git
 cd sovereign-agent
 
 # Create server config
@@ -55,7 +55,7 @@ cd relay
 
 ### Step 2: Set Up the Client
 
-Choose **one** of these methods on your workstation:
+The client needs the full repo with submodules to run OpenCode. Choose **one** method:
 
 #### Option A: Docker
 
@@ -114,6 +114,8 @@ Host pi-relay
 ## Server Setup (Detailed)
 
 The **relay server** holds your API keys and forwards authenticated requests to OpenRouter. Run this on a trusted machine.
+
+> **Note**: The server only needs the core repo - no submodules required. Clone with `git clone https://github.com/lachlan-jones5/sovereign-agent.git` (fast, ~100KB).
 
 ### Server Configuration
 
