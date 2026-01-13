@@ -61,6 +61,8 @@ run_test_suite "Config Generation Tests" "$SCRIPT_DIR/test-generate-configs.sh"
 run_test_suite "Check Dependencies Tests" "$SCRIPT_DIR/test-check-deps.sh"
 run_test_suite "Install Script Tests" "$SCRIPT_DIR/test-install.sh"
 run_test_suite "Sync Upstream Tests" "$SCRIPT_DIR/test-sync-upstream.sh"
+run_test_suite "Security Features Tests" "$SCRIPT_DIR/test-security-features.sh"
+run_test_suite "AGENTS.md Validation Tests" "$SCRIPT_DIR/test-validate-agents-md.sh"
 run_omo_tests
 
 # Summary

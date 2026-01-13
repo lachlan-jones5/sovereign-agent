@@ -15,5 +15,14 @@
     "dcp_turn_protection": 2,
     "dcp_error_retention_turns": 4,
     "dcp_nudge_frequency": 10
+  },
+
+  "security": {
+    "provider_whitelist": ["DeepInfra", "Fireworks", "Together"],
+    "max_tokens": {
+      "orchestrator": 32000,
+      "planner": 16000,
+      "librarian": 64000
+    }
   }
 }

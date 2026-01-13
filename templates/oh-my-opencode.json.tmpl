@@ -4,7 +4,10 @@
       "model": "{{ORCHESTRATOR_MODEL}}"
     },
     "oracle": {
-      "model": "{{PLANNER_MODEL}}"
+      "model": "{{PLANNER_MODEL}}",
+      "permissions": {
+        "allow_tool_execution": "ask"
+      }
     },
     "librarian": {
       "model": "{{LIBRARIAN_MODEL}}"
@@ -23,7 +26,8 @@
     }
   },
   "sisyphus_agent": {
-    "max_iterations": {{ULTRAWORK_MAX_ITERATIONS}}
+    "max_iterations": {{ULTRAWORK_MAX_ITERATIONS}},
+    "auto_recover": false
   },
   "experimental": {
     "dynamic_context_pruning": {

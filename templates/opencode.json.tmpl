@@ -11,7 +11,11 @@
       "options": {
         "zdr": true,
         "site_url": "{{SITE_URL}}",
-        "site_name": "{{SITE_NAME}}"
+        "site_name": "{{SITE_NAME}}",
+        "provider": {
+          "order": {{PROVIDER_WHITELIST}},
+          "allow_fallbacks": false
+        }
       }
     }
   },
@@ -19,6 +23,17 @@
     "default": "openrouter/{{ORCHESTRATOR_MODEL}}",
     "planner": "openrouter/{{PLANNER_MODEL}}",
     "librarian": "openrouter/{{LIBRARIAN_MODEL}}"
+  },
+  "model_config": {
+    "openrouter/{{ORCHESTRATOR_MODEL}}": {
+      "max_tokens": {{ORCHESTRATOR_MAX_TOKENS}}
+    },
+    "openrouter/{{PLANNER_MODEL}}": {
+      "max_tokens": {{PLANNER_MAX_TOKENS}}
+    },
+    "openrouter/{{LIBRARIAN_MODEL}}": {
+      "max_tokens": {{LIBRARIAN_MAX_TOKENS}}
+    }
   },
   "tools": {
     "write": true,

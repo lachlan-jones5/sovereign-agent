@@ -93,6 +93,19 @@ generate_from_template() {
     local dcp_nudge_frequency
     dcp_nudge_frequency=$(get_config_value "$config_file" '.preferences.dcp_nudge_frequency' '10')
 
+    # Security settings
+    local provider_whitelist
+    provider_whitelist=$(jq -c '.security.provider_whitelist // ["DeepInfra", "Fireworks", "Together"]' "$config_file")
+    
+    local orchestrator_max_tokens
+    orchestrator_max_tokens=$(get_config_value "$config_file" '.security.max_tokens.orchestrator' '32000')
+    
+    local planner_max_tokens
+    planner_max_tokens=$(get_config_value "$config_file" '.security.max_tokens.planner' '16000')
+    
+    local librarian_max_tokens
+    librarian_max_tokens=$(get_config_value "$config_file" '.security.max_tokens.librarian' '64000')
+
     # Replace placeholders
     content="${content//\{\{OPENROUTER_API_KEY\}\}/$openrouter_api_key}"
     content="${content//\{\{SITE_URL\}\}/$site_url}"
@@ -105,6 +118,10 @@ generate_from_template() {
     content="${content//\{\{DCP_TURN_PROTECTION\}\}/$dcp_turn_protection}"
     content="${content//\{\{DCP_ERROR_RETENTION_TURNS\}\}/$dcp_error_retention}"
     content="${content//\{\{DCP_NUDGE_FREQUENCY\}\}/$dcp_nudge_frequency}"
+    content="${content//\{\{PROVIDER_WHITELIST\}\}/$provider_whitelist}"
+    content="${content//\{\{ORCHESTRATOR_MAX_TOKENS\}\}/$orchestrator_max_tokens}"
+    content="${content//\{\{PLANNER_MAX_TOKENS\}\}/$planner_max_tokens}"
+    content="${content//\{\{LIBRARIAN_MAX_TOKENS\}\}/$librarian_max_tokens}"
 
     # Create output directory if needed
     local output_dir
@@ -172,6 +189,18 @@ generate_all_configs() {
         "$TEMPLATES_DIR/oh-my-opencode.json.tmpl" \
         "$opencode_config_dir/oh-my-opencode.json" \
         "$config_file"
+
+    # Copy .opencodeignore template to user's home directory
+    if [[ -f "$TEMPLATES_DIR/opencodeignore.tmpl" ]]; then
+        local opencodeignore_dest="$HOME/.opencodeignore"
+        if [[ -f "$opencodeignore_dest" ]]; then
+            local backup_file="$opencodeignore_dest.backup.$(date +%Y%m%d%H%M%S)"
+            cp "$opencodeignore_dest" "$backup_file"
+            log_warn "Backed up existing .opencodeignore to $backup_file"
+        fi
+        cp "$TEMPLATES_DIR/opencodeignore.tmpl" "$opencodeignore_dest"
+        log_info "Generated: $opencodeignore_dest"
+    fi
 
     echo
     log_info "All config files generated successfully"

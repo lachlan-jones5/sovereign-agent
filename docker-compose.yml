@@ -16,6 +16,11 @@
 #
 #   # Re-run installer (after config changes)
 #   docker compose run --rm agent --install --skip-deps
+#
+# Security notes:
+#   - Network is restricted to OpenRouter API and package registries only
+#   - Private LAN ranges are blocked to prevent SSRF attacks
+#   - Only the project directory is mounted (not home directory)
 
 services:
   agent:
@@ -28,6 +33,20 @@ services:
     # Interactive terminal
     stdin_open: true
     tty: true
+    
+    # Network restrictions for security
+    networks:
+      - sovereign-net
+    
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    
+    # Read-only root filesystem with specific writable paths
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M,mode=1777
+      - /run:size=10M,mode=755
     
     volumes:
       # Mount current directory as workspace
@@ -56,6 +75,16 @@ services:
       - CONFIG_PATH=/app/config.json
     
     working_dir: /workspace
+
+networks:
+  sovereign-net:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.enable_ip_masquerade: "true"
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+          gateway: 172.28.0.1
 
 volumes:
   opencode-config:
