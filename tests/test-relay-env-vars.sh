@@ -189,6 +189,41 @@ else
     fail "setup-relay.sh should stop docker container before restarting"
 fi
 
+# Test: setup-relay.sh removes docker container before restarting
+if grep -q 'docker rm sovereign-relay' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
+    pass "setup-relay.sh removes docker container before restarting"
+else
+    fail "setup-relay.sh should remove docker container before restarting"
+fi
+
+# Test: setup-relay.sh checks port usage via ss or netstat
+if grep -q 'ss -tlnp\|netstat -tlnp' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
+    pass "setup-relay.sh checks port usage via ss/netstat"
+else
+    fail "setup-relay.sh should check port usage via ss or netstat"
+fi
+
+# Test: setup-relay.sh tries sudo for pkill if regular pkill fails
+if grep -q 'sudo pkill' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
+    pass "setup-relay.sh tries sudo pkill for processes owned by other users"
+else
+    fail "setup-relay.sh should try sudo pkill for processes owned by other users"
+fi
+
+# Test: setup-relay.sh verifies port is free after cleanup
+if grep -q 'Port.*still in use\|ERROR.*Port' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
+    pass "setup-relay.sh verifies port is free after cleanup"
+else
+    fail "setup-relay.sh should verify port is free after cleanup"
+fi
+
+# Test: setup-relay.sh provides manual cleanup instructions on failure
+if grep -q 'lsof -i\|sudo kill' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
+    pass "setup-relay.sh provides manual cleanup instructions"
+else
+    fail "setup-relay.sh should provide manual cleanup instructions on failure"
+fi
+
 # Test: setup-relay.sh always starts relay (not conditional on not running)
 if grep -q 'RELAY_HOST=.*start-relay.sh daemon' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
     pass "setup-relay.sh always restarts relay to apply new config"
@@ -292,6 +327,75 @@ if grep -q '0\.0\.0\.0' "$PROJECT_ROOT/relay/main.test.ts"; then
     pass "main.test.ts tests 0.0.0.0 as valid RELAY_HOST"
 else
     fail "main.test.ts should test 0.0.0.0 as valid RELAY_HOST"
+fi
+
+# ============================================
+# Edge Cases and Non-Default Values
+# ============================================
+echo ""
+echo "--- Edge Cases and Non-Default Values ---"
+
+# Test: main.ts handles non-default port (e.g., 8081, 9000)
+if grep -q 'parseInt.*RELAY_PORT\|RELAY_PORT.*parseInt' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "main.ts parses RELAY_PORT as integer (handles any port)"
+else
+    fail "main.ts should parse RELAY_PORT as integer"
+fi
+
+# Test: main.test.ts tests custom port values
+if grep -q '9999\|custom.*port\|different.*port' "$PROJECT_ROOT/relay/main.test.ts"; then
+    pass "main.test.ts tests custom/non-default port values"
+else
+    fail "main.test.ts should test custom/non-default port values"
+fi
+
+# Test: main.test.ts tests custom IP address as RELAY_HOST
+if grep -q '192\.168\|10\.0\|custom.*IP\|LAN.*IP' "$PROJECT_ROOT/relay/main.test.ts"; then
+    pass "main.test.ts tests custom IP address as RELAY_HOST"
+else
+    fail "main.test.ts should test custom IP address as RELAY_HOST"
+fi
+
+# Test: main.test.ts tests IPv6 localhost
+if grep -q '::1\|IPv6' "$PROJECT_ROOT/relay/main.test.ts"; then
+    pass "main.test.ts tests IPv6 address support"
+else
+    fail "main.test.ts should test IPv6 address support"
+fi
+
+# Test: start-relay.sh handles custom RELAY_HOST values
+if grep -q 'RELAY_HOST.*:-\|export RELAY_HOST' "$PROJECT_ROOT/relay/start-relay.sh"; then
+    pass "start-relay.sh handles custom RELAY_HOST values"
+else
+    fail "start-relay.sh should handle custom RELAY_HOST values"
+fi
+
+# Test: start-relay.sh handles custom RELAY_PORT values
+if grep -q 'RELAY_PORT.*:-\|export RELAY_PORT' "$PROJECT_ROOT/relay/start-relay.sh"; then
+    pass "start-relay.sh handles custom RELAY_PORT values"
+else
+    fail "start-relay.sh should handle custom RELAY_PORT values"
+fi
+
+# Test: docker-compose.relay.yml handles non-default RELAY_PORT
+if grep -q 'RELAY_PORT:-8080.*RELAY_PORT\|RELAY_PORT.*:.*RELAY_PORT' "$PROJECT_ROOT/docker-compose.relay.yml"; then
+    pass "docker-compose.relay.yml maps container port dynamically"
+else
+    fail "docker-compose.relay.yml should map container port dynamically"
+fi
+
+# Test: setup-relay.sh uses $RELAY_PORT variable in health check
+if grep -q 'localhost:\$RELAY_PORT\|127.0.0.1:\$RELAY_PORT' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
+    pass "setup-relay.sh uses RELAY_PORT variable in health check"
+else
+    fail "setup-relay.sh should use RELAY_PORT variable in health check"
+fi
+
+# Test: setup-relay.sh uses $RELAY_PORT in port-in-use check
+if grep -q ':\$RELAY_PORT\s\|:$RELAY_PORT ' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
+    pass "setup-relay.sh uses RELAY_PORT in port-in-use check"
+else
+    fail "setup-relay.sh should use RELAY_PORT in port-in-use check"
 fi
 
 # ============================================
