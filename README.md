@@ -31,19 +31,24 @@ Sovereign Agent uses a **relay server** to keep your API keys secure on a truste
 
 ### Step 1: Set Up the Relay Server
 
-On your trusted machine (Pi, home server, VPS), clone and start the relay:
+On your trusted machine (Pi, home server, VPS):
+
+```bash
+# One-liner setup (prompts for API key)
+curl -fsSL https://raw.githubusercontent.com/lachlan-jones5/sovereign-agent/master/scripts/setup-relay.sh | bash
+```
+
+Or manually:
 
 ```bash
 git clone https://github.com/lachlan-jones5/sovereign-agent.git
 cd sovereign-agent
-
 cp config.json.example config.json
 # Edit config.json: add your openrouter_api_key
 
-# Start the relay (choose one)
+# Start the relay
 docker compose -f docker-compose.relay.yml up -d   # Docker
-# OR
-cd relay && ./start-relay.sh daemon                 # Native (requires Bun)
+# OR: cd relay && ./start-relay.sh daemon          # Native (requires Bun)
 ```
 
 Verify it's running:
@@ -57,6 +62,10 @@ curl http://localhost:8080/health
 Your laptop bridges the Work VM and the relay server. Run this **on your laptop**:
 
 ```bash
+# Using the helper script
+./scripts/tunnel.sh workvm pi-hostname
+
+# Or directly
 ssh -R 8080:pi-hostname:8080 workvm -N
 ```
 
@@ -65,33 +74,19 @@ Replace:
 - `workvm` - your Work VM's SSH host
 
 **What this does:**
-- `-R 8080:pi-hostname:8080` - Makes port 8080 on the Work VM forward through your laptop to the relay
+- Makes port 8080 on the Work VM forward through your laptop to the relay
 - `-N` - Just create the tunnel, don't open a shell
 
-**Diagram:**
-```
-Work VM :8080 ◀──reverse tunnel──▶ Laptop ──SSH──▶ Pi :8080 (relay)
-     ▲
-     │
-OpenCode talks to localhost:8080
-```
+### Step 3: Set Up the Work VM
 
-### Step 3: Install OpenCode on the Work VM
+On the Work VM:
 
-On the Work VM, you just need OpenCode configured to use `localhost:8080`. You can either:
-
-**Option A: Use sovereign-agent's installer**
 ```bash
-git clone --recurse-submodules --shallow-submodules https://github.com/lachlan-jones5/sovereign-agent.git
-cd sovereign-agent
-cp config.client.example config.json
-./install.sh
-opencode
+# One-liner setup (installs OpenCode, configures relay)
+curl -fsSL https://raw.githubusercontent.com/lachlan-jones5/sovereign-agent/master/scripts/setup-client.sh | bash
 ```
 
-**Option B: Configure existing OpenCode manually**
-
-Edit your OpenCode config (`~/.config/opencode/config.json`) to point to the relay:
+Or manually: install [OpenCode](https://github.com/sst/opencode) and configure `~/.config/opencode/config.json`:
 
 ```json
 {
