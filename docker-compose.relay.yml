@@ -28,9 +28,10 @@ services:
     container_name: sovereign-relay
     restart: unless-stopped
     
-    # Only bind to localhost - clients use SSH tunnel
+    # Port mapping - change RELAY_PORT to use a different port
+    # Example: RELAY_PORT=8081 docker compose -f docker-compose.relay.yml up -d
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:${RELAY_PORT:-8080}:${RELAY_PORT:-8080}"
     
     # Mount config file (read-only)
     volumes:
@@ -38,13 +39,13 @@ services:
     
     environment:
       - CONFIG_PATH=/app/config.json
-      - RELAY_PORT=8080
+      - RELAY_PORT=${RELAY_PORT:-8080}
       - RELAY_HOST=0.0.0.0
       - LOG_LEVEL=${LOG_LEVEL:-info}
     
     # Health check
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:${RELAY_PORT:-8080}/health"]
       interval: 30s
       timeout: 5s
       retries: 3
