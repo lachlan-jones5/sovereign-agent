@@ -2,50 +2,122 @@
 
 Privacy-compliant agentic software engineering environment combining [OpenCode](https://github.com/sst/opencode), [oh-my-opencode](https://github.com/code-yeongyu/oh-my-opencode), and [opencode-dcp](https://github.com/tarquinen/opencode-dcp) with OpenRouter's Zero Data Retention (ZDR) mode.
 
-## Features
+## Overview
 
-- **Single Configuration**: One `config.json` file for all secrets and model assignments
-- **Privacy-First**: All models route through OpenRouter with ZDR enabled
-- **Role-Based Models**: Assign different models to orchestrator, planner, librarian, and fallback roles
-- **DCP Awareness**: Agents understand context pruning constraints for optimal performance
-- **Upstream Sync**: Easy rebasing on upstream repositories while preserving modifications
+Sovereign Agent uses a **client-server relay architecture** to keep your API keys secure on a trusted machine while running OpenCode on any workstation. This is ideal for:
+
+- **Remote work**: Run AI coding on a work VM while keeping keys on your personal device
+- **Network isolation**: Route API traffic through a trusted server to avoid monitoring
+- **Team deployments**: Centralized API key management with per-user access control
+
+```
+┌─────────────────┐     ┌──────────────┐     ┌─────────────────┐     ┌────────────┐
+│   Work VM       │     │   Laptop     │     │   Pi/Server     │     │ OpenRouter │
+│   (client)      │────▶│   (jump)     │────▶│   (relay)       │────▶│   API      │
+│   OpenCode      │ SSH │   optional   │ SSH │   API keys here │HTTPS│   ZDR mode │
+└─────────────────┘     └──────────────┘     └─────────────────┘     └────────────┘
+```
 
 ## Quick Start
 
-### Option A: Docker (Recommended)
+### Step 1: Set Up the Relay Server
 
-The easiest way to get started:
+Choose **one** of these methods on your trusted machine (Pi, home server, or laptop):
+
+#### Option A: Docker (Recommended)
+
+```bash
+git clone --recursive https://github.com/lachlan-jones5/sovereign-agent.git
+cd sovereign-agent
+
+# Create server config with your API key
+cp config.json.example config.json
+# Edit config.json: add your openrouter_api_key, set relay.enabled=true, relay.mode=server
+
+# Start the relay server
+docker compose -f docker-compose.relay.yml up -d
+```
+
+#### Option B: Native (Bun)
 
 ```bash
 git clone --recursive https://github.com/lachlan-jones5/sovereign-agent.git
 cd sovereign-agent
 
-# Create config with your API key
+# Create server config
 cp config.json.example config.json
-# Edit config.json with your OpenRouter API key
+# Edit config.json: add your openrouter_api_key, set relay.enabled=true, relay.mode=server
 
-# Build and run
-docker compose run --rm agent
+# Start the relay
+cd relay
+./start-relay.sh daemon
 ```
 
-See [Docker Usage](#docker-usage) for more options.
+### Step 2: Set Up the Client
 
-### Option B: Native Installation
+Choose **one** of these methods on your workstation:
 
-#### 1. Clone with submodules
+#### Option A: Docker
 
 ```bash
 git clone --recursive https://github.com/lachlan-jones5/sovereign-agent.git
 cd sovereign-agent
+
+# Create client config (no API key needed)
+cp config.client.example config.json
+
+# Start SSH tunnel + OpenCode
+docker compose run --rm agent ./lib/ssh-relay.sh run pi-relay
 ```
 
-#### 2. Create your configuration
+#### Option B: Native
 
 ```bash
-cp config.json.example config.json
+git clone --recursive https://github.com/lachlan-jones5/sovereign-agent.git
+cd sovereign-agent
+
+# Create client config and install
+cp config.client.example config.json
+./install.sh
+
+# Connect via SSH tunnel and run OpenCode
+./lib/ssh-relay.sh run pi-relay
 ```
 
-Edit `config.json` with your OpenRouter API key and model preferences:
+### Step 3: Configure SSH (Required for Remote Relay)
+
+Add your relay server to `~/.ssh/config` on the client machine:
+
+```ssh-config
+Host pi-relay
+    HostName your-pi.local
+    User pi
+    IdentityFile ~/.ssh/pi_key
+    ServerAliveInterval 30
+```
+
+For multi-hop setups (e.g., through a laptop):
+
+```ssh-config
+Host laptop
+    HostName laptop.local
+    User youruser
+
+Host pi-relay
+    HostName pi.local
+    User pi
+    ProxyJump laptop
+```
+
+---
+
+## Server Setup (Detailed)
+
+The **relay server** holds your API keys and forwards authenticated requests to OpenRouter. Run this on a trusted machine.
+
+### Server Configuration
+
+Create `config.json` with your API key and relay settings:
 
 ```json
 {
@@ -60,27 +132,256 @@ Edit `config.json` with your OpenRouter API key and model preferences:
     "fallback": "meta-llama/llama-3.3-70b-instruct"
   },
 
-  "preferences": {
-    "ultrawork_max_iterations": 50,
-    "dcp_turn_protection": 2,
-    "dcp_error_retention_turns": 4,
-    "dcp_nudge_frequency": 10
+  "relay": {
+    "enabled": true,
+    "mode": "server",
+    "port": 8080,
+    "allowed_paths": [
+      "/api/v1/chat/completions",
+      "/api/v1/completions",
+      "/api/v1/models",
+      "/api/v1/auth/key"
+    ]
   }
 }
 ```
 
-#### 3. Run the installer
+### Running the Server with Docker
 
-```bash
-./install.sh
+**docker-compose.relay.yml**:
+
+```yaml
+services:
+  relay:
+    build:
+      context: .
+      dockerfile: Dockerfile.relay
+    image: sovereign-relay:latest
+    container_name: sovereign-relay
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"  # Only bind to localhost for SSH tunnel
+    volumes:
+      - ./config.json:/app/config.json:ro
+    environment:
+      - RELAY_PORT=8080
+      - RELAY_HOST=0.0.0.0
+      - LOG_LEVEL=info
 ```
 
-#### 4. Start coding
+Start the server:
 
 ```bash
+# Build and start
+docker compose -f docker-compose.relay.yml up -d
+
+# Check logs
+docker compose -f docker-compose.relay.yml logs -f
+
+# Check status
+curl http://localhost:8080/health
+```
+
+### Running the Server Natively
+
+Prerequisites: [Bun](https://bun.sh) runtime
+
+```bash
+# Start in foreground (for testing)
+cd relay
+./start-relay.sh
+
+# Start as daemon (for production)
+./start-relay.sh daemon
+
+# Check status
+./start-relay.sh status
+
+# View logs
+tail -f /tmp/sovereign-relay.log
+
+# Stop daemon
+./start-relay.sh stop
+```
+
+### Server Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CONFIG_PATH` | `../config.json` | Path to config file |
+| `RELAY_PORT` | `8080` | Port to listen on |
+| `RELAY_HOST` | `127.0.0.1` | Host to bind (use `0.0.0.0` in Docker) |
+| `LOG_LEVEL` | `info` | Log level: debug, info, warn, error |
+
+### Security Considerations
+
+1. **Bind to localhost**: The relay only accepts connections from `127.0.0.1` by default. Clients connect via SSH tunnel.
+2. **Path whitelist**: Only `/api/v1/*` endpoints are forwarded. Other paths return 403.
+3. **No API key exposure**: The API key never leaves the server; clients don't need it.
+
+---
+
+## Client Setup (Detailed)
+
+The **client** runs OpenCode and connects to the relay server via SSH tunnel. No API key required.
+
+### Client Configuration
+
+Create `config.json` with relay client settings (note: `openrouter_api_key` is empty):
+
+```json
+{
+  "openrouter_api_key": "",
+  "site_url": "https://localhost",
+  "site_name": "SovereignAgent-Client",
+
+  "models": {
+    "orchestrator": "deepseek/deepseek-v3",
+    "planner": "anthropic/claude-opus-4.5",
+    "librarian": "google/gemini-3-flash",
+    "fallback": "meta-llama/llama-3.3-70b-instruct"
+  },
+
+  "relay": {
+    "enabled": true,
+    "mode": "client",
+    "port": 8080
+  }
+}
+```
+
+### Running the Client with Docker
+
+```bash
+# Interactive session with SSH tunnel
+docker compose run --rm agent ./lib/ssh-relay.sh run pi-relay
+
+# Or mount a specific project
+docker compose run --rm \
+  -v /path/to/project:/workspace \
+  agent ./lib/ssh-relay.sh run pi-relay
+```
+
+For persistent tunnel (keep tunnel running between sessions):
+
+```bash
+# Terminal 1: Start tunnel
+docker compose run --rm agent ./lib/ssh-relay.sh start pi-relay
+
+# Terminal 2: Run OpenCode (multiple times)
+docker compose run --rm agent opencode
+
+# When done: Stop tunnel
+docker compose run --rm agent ./lib/ssh-relay.sh stop
+```
+
+### Running the Client Natively
+
+Prerequisites: Go 1.21+, Bun 1.0+, jq
+
+```bash
+# One-time setup
+cp config.client.example config.json
+./install.sh
+
+# Daily usage: start tunnel and run OpenCode
+./lib/ssh-relay.sh run pi-relay
+
+# Or manage tunnel separately
+./lib/ssh-relay.sh start pi-relay    # Start tunnel
+opencode                              # Run OpenCode (multiple times)
+./lib/ssh-relay.sh stop               # Stop tunnel when done
+```
+
+### Client Commands
+
+```bash
+# Start tunnel and run OpenCode
+./lib/ssh-relay.sh run <ssh-host>
+
+# Manage tunnel separately
+./lib/ssh-relay.sh start <ssh-host>   # Start tunnel
+./lib/ssh-relay.sh status             # Check tunnel + relay status
+./lib/ssh-relay.sh stop               # Stop tunnel
+
+# Check if relay is accessible
+curl http://localhost:8080/health
+```
+
+### SSH Tunnel Configuration
+
+The SSH host can be:
+- A host defined in `~/.ssh/config` (recommended)
+- Direct user@hostname connection
+- Multi-hop via ProxyJump
+
+**Direct connection** (client → server):
+```ssh-config
+Host pi-relay
+    HostName your-pi.duckdns.org
+    User pi
+    Port 22
+    IdentityFile ~/.ssh/pi_key
+    ServerAliveInterval 30
+```
+
+**Two-hop** (client → laptop → server):
+```ssh-config
+Host laptop
+    HostName laptop.local
+    User youruser
+    IdentityFile ~/.ssh/laptop_key
+
+Host pi-relay
+    HostName pi.local
+    User pi
+    ProxyJump laptop
+    IdentityFile ~/.ssh/pi_key
+```
+
+**Three-hop** (client → bastion → laptop → server):
+```ssh-config
+Host pi-relay
+    HostName pi.local
+    User pi
+    ProxyJump bastion,laptop
+```
+
+---
+
+## Standalone Mode (No Relay)
+
+If you don't need the relay architecture, you can run sovereign-agent directly with the API key on the same machine.
+
+### Docker
+
+```bash
+git clone --recursive https://github.com/lachlan-jones5/sovereign-agent.git
+cd sovereign-agent
+
+# Create config with API key
+cp config.json.example config.json
+# Edit config.json: add openrouter_api_key, set relay.enabled=false
+
+# Build and run
+docker compose run --rm agent
+```
+
+### Native
+
+```bash
+git clone --recursive https://github.com/lachlan-jones5/sovereign-agent.git
+cd sovereign-agent
+
+cp config.json.example config.json
+# Edit config.json with your API key
+
+./install.sh
 cd /path/to/your/project
 opencode
 ```
+
+---
 
 ## Configuration Reference
 
@@ -114,36 +415,51 @@ opencode
 | `dcp_error_retention_turns` | Turns to retain error context | 4 |
 | `dcp_nudge_frequency` | How often to remind about context limits | 10 |
 
-## Installer Options
+### Relay Settings
+
+| Setting | Server | Client | Description |
+|---------|--------|--------|-------------|
+| `relay.enabled` | true | true | Enable relay mode |
+| `relay.mode` | "server" | "client" | Role of this instance |
+| `relay.port` | 8080 | 8080 | Port for relay service |
+| `relay.allowed_paths` | [...] | - | API paths to forward (server only) |
+
+---
+
+## Docker Reference
+
+### Volume Mounts
+
+| Mount | Purpose |
+|-------|---------|
+| `/workspace` | Your project directory (working directory) |
+| `/app/config.json` | Your `config.json` |
+| `/root/.config/opencode` | Generated OpenCode configuration |
+| `/root/.local/share/opencode` | Session history (SQLite) |
+| `/root/.ssh` | SSH keys for tunnel/git (optional) |
+| `/root/.gitconfig` | Git configuration (optional) |
+
+### Environment Variables
+
+| Variable | Purpose |
+|----------|---------|
+| `OPENROUTER_API_KEY` | API key (alternative to config.json) |
+| `CONFIG_PATH` | Custom config.json location |
+| `RELAY_PORT` | Override relay port |
+| `LOG_LEVEL` | Logging verbosity |
+
+### Multi-Project Alias
 
 ```bash
-./install.sh [OPTIONS]
+# Add to ~/.bashrc or ~/.zshrc
+alias sa='docker compose -f /path/to/sovereign-agent/docker-compose.yml run --rm -v $(pwd):/workspace agent'
 
-Options:
-  -c, --config FILE    Path to config.json (default: ./config.json)
-  -d, --dest DIR       OpenCode config directory (default: ~/.config/opencode)
-  -s, --skip-deps      Skip dependency installation
-  -h, --help           Show help message
+# Use anywhere
+cd ~/projects/my-app
+sa
 ```
 
-## Generated Files
-
-The installer generates three configuration files in `~/.config/opencode/`:
-
-| File | Purpose |
-|------|---------|
-| `opencode.json` | Main OpenCode configuration with provider settings |
-| `dcp.jsonc` | Dynamic Context Pruning settings |
-| `oh-my-opencode.json` | Agent orchestration configuration |
-
-## Commands
-
-Once installed, use these commands in OpenCode:
-
-| Command | Description |
-|---------|-------------|
-| `/ulw <task>` | Start ultrawork mode for complex tasks |
-| `/init-deep` | Initialize deep context for the project |
+---
 
 ## Maintenance
 
@@ -164,12 +480,18 @@ Once installed, use these commands in OpenCode:
 ./scripts/sync-upstream.sh oh-my-opencode
 ```
 
-After syncing, push to your forks:
+### Relay Health Checks
 
 ```bash
-cd vendor/opencode && git push origin main --force-with-lease
-cd ../oh-my-opencode && git push origin dev --force-with-lease
+# On server
+curl http://localhost:8080/health
+curl http://localhost:8080/stats
+
+# On client (with tunnel active)
+./lib/ssh-relay.sh status
 ```
+
+---
 
 ## Privacy
 
@@ -179,348 +501,52 @@ All API calls route through OpenRouter with Zero Data Retention (ZDR) enabled:
 - Your data is not used for training
 - Compliance with enterprise data policies
 
-The `site_url` and `site_name` fields are sent to OpenRouter for attribution but contain no sensitive data.
-
-## SSH Relay Mode
-
-For environments where you want to route API traffic through a trusted server (e.g., to avoid network monitoring), sovereign-agent supports a client-server relay architecture.
-
-### Architecture
-
-```
-Work VM (client)      Laptop (jump)       Pi (server)         OpenRouter
-     │                    │                   │                   │
-     │─── SSH tunnel ────▶│                   │                   │
-     │                    │─── SSH tunnel ───▶│                   │
-     │                    │                   │─── HTTPS ────────▶│
-```
-
-- **Server (Pi)**: Has config.json with API key, runs relay service
-- **Client (Work VM)**: Runs OpenCode, connects via SSH tunnel
-- **Jump Host (Laptop)**: Optional SSH proxy for routing
-
-### Quick Setup
-
-#### On Server (Pi)
-
-```bash
-# Setup sovereign-agent with your API key
-cp config.json.example config.json
-# Edit config.json: set openrouter_api_key, relay.enabled=true, relay.mode=server
-
-# Start the relay
-cd relay
-./start-relay.sh daemon
-```
-
-#### On Client (Work VM)
-
-```bash
-# Setup with client config
-cp config.client.example config.json
-./install.sh
-
-# Connect via SSH tunnel and run OpenCode
-./lib/ssh-relay.sh run pi-relay
-```
-
-### Configuration
-
-**Server mode** (`config.json` on Pi):
-```json
-{
-  "openrouter_api_key": "sk-or-v1-your-key",
-  "relay": {
-    "enabled": true,
-    "mode": "server",
-    "port": 8080
-  }
-}
-```
-
-**Client mode** (`config.json` on Work VM):
-```json
-{
-  "relay": {
-    "enabled": true,
-    "mode": "client",
-    "port": 8080
-  }
-}
-```
-
-### SSH Configuration
-
-Add to `~/.ssh/config` on Work VM:
-
-```ssh-config
-Host laptop
-    HostName laptop.local
-    User youruser
-    IdentityFile ~/.ssh/laptop_key
-
-Host pi-relay
-    HostName pi.local               # Pi's address (from laptop's perspective)
-    User pi
-    ProxyJump laptop                # Route through laptop
-    IdentityFile ~/.ssh/pi_key
-    ServerAliveInterval 30
-```
-
-### Multi-Hop Configurations
-
-SSH's `ProxyJump` supports chaining through multiple nodes. The relay architecture is SSH-agnostic - it only requires a tunnel to the relay service.
-
-**Two-hop example** (Work VM → Laptop → Pi):
-```ssh-config
-Host pi-relay
-    HostName pi.local
-    ProxyJump laptop
-```
-
-**Three-hop example** (Work VM → Bastion → Laptop → Pi):
-```ssh-config
-Host pi-relay
-    HostName pi.local
-    ProxyJump bastion,laptop
-```
-
-**Direct connection** (Work VM → Pi, no jump host):
-```ssh-config
-Host pi-relay
-    HostName your-pi.duckdns.org
-    Port 22
-```
-
-The tunnel command remains the same regardless of hops:
-```bash
-./lib/ssh-relay.sh run pi-relay
-```
-
-### Relay Scripts
-
-| Script | Location | Purpose |
-|--------|----------|---------|
-| `start-relay.sh` | Server (Pi) | Start/stop the API relay service |
-| `ssh-relay.sh` | Client (Work VM) | Manage SSH tunnel and run OpenCode |
-
-**Server commands:**
-```bash
-cd relay
-./start-relay.sh daemon    # Start in background
-./start-relay.sh status    # Check status
-./start-relay.sh stop      # Stop relay
-```
-
-**Client commands:**
-```bash
-./lib/ssh-relay.sh run pi-relay      # Start tunnel + OpenCode
-./lib/ssh-relay.sh start pi-relay    # Start tunnel only
-./lib/ssh-relay.sh status            # Check tunnel status
-./lib/ssh-relay.sh stop              # Stop tunnel
-```
-
-## Docker Usage
-
-### Building the Image
-
-```bash
-docker build -t sovereign-agent .
-```
-
-Or with docker compose:
-
-```bash
-docker compose build
-```
-
-### Running with Docker Compose (Recommended)
-
-```bash
-# Interactive session in current directory
-docker compose run --rm agent
-
-# Work on a different project
-docker compose run --rm -v /path/to/project:/workspace agent
-
-# Shell access for debugging
-docker compose run --rm agent bash
-
-# Re-run installer after config changes
-docker compose run --rm agent --install --skip-deps
-```
-
-### Running with Docker Directly
-
-```bash
-# Basic usage - mount project and config
-docker run -it --rm \
-  -v $(pwd):/workspace \
-  -v ./config.json:/app/config.json:ro \
-  sovereign-agent
-
-# With persistent configuration
-docker run -it --rm \
-  -v $(pwd):/workspace \
-  -v ./config.json:/app/config.json:ro \
-  -v sovereign-config:/root/.config/opencode \
-  -v sovereign-data:/root/.local/share/opencode \
-  sovereign-agent
-
-# Shell access
-docker run -it --rm sovereign-agent bash
-```
-
-### Volume Mounts
-
-| Mount | Purpose |
-|-------|---------|
-| `/workspace` | Your project directory (working directory) |
-| `/app/config.json` | Your `config.json` with API key |
-| `/root/.config/opencode` | Generated OpenCode configuration |
-| `/root/.local/share/opencode` | Session history (SQLite) |
-| `/root/.ssh` | SSH keys for git operations (optional) |
-| `/root/.gitconfig` | Git configuration (optional) |
-
-### Environment Variables
-
-| Variable | Purpose |
-|----------|---------|
-| `OPENROUTER_API_KEY` | API key (alternative to config.json) |
-| `CONFIG_PATH` | Custom config.json location |
-
-### Multi-Project Setup
-
-For working on multiple projects:
-
-```bash
-# Create an alias
-alias sa='docker compose -f /path/to/sovereign-agent/docker-compose.yml run --rm -v $(pwd):/workspace agent'
-
-# Use anywhere
-cd ~/projects/my-app
-sa
-```
+The relay architecture adds another layer of protection by keeping API keys off untrusted machines.
 
 ---
 
-# Developer Guide
+## Troubleshooting
 
-## Project Structure
+### Relay Connection Issues
 
-```
-sovereign-agent/
-├── install.sh                      # Main installer script
-├── config.json.example             # User configuration template
-├── README.md                       # This file
-├── Dockerfile                      # Multi-stage Docker build
-├── docker-compose.yml              # Docker Compose configuration
-├── .dockerignore                   # Docker build exclusions
-├── lib/
-│   ├── check-deps.sh               # Dependency installer (curl, jq, Go, Bun)
-│   ├── validate.sh                 # Configuration validator
-│   └── generate-configs.sh         # Config file generator
-├── templates/
-│   ├── opencode.json.tmpl          # OpenCode config template
-│   ├── dcp.jsonc.tmpl              # DCP config template
-│   └── oh-my-opencode.json.tmpl    # oh-my-opencode config template
-├── scripts/
-│   └── sync-upstream.sh            # Upstream sync utility
-├── tests/
-│   ├── run-tests.sh                # Test runner
-│   ├── test-validate.sh            # Validation tests
-│   ├── test-generate-configs.sh    # Config generation tests
-│   ├── test-check-deps.sh          # Dependency check tests
-│   ├── test-install.sh             # Installer tests
-│   └── test-sync-upstream.sh       # Sync script tests
-└── vendor/
-    ├── opencode/                   # Forked OpenCode submodule
-    └── oh-my-opencode/             # Forked oh-my-opencode submodule
-```
+**Symptom**: `Relay not responding after 10 seconds`
 
-## Architecture
+1. Check if relay is running on server:
+   ```bash
+   ssh pi-relay 'cd ~/sovereign-agent/relay && ./start-relay.sh status'
+   ```
 
-### Build Pipeline
+2. Check SSH tunnel:
+   ```bash
+   ./lib/ssh-relay.sh status
+   ```
 
-```
-config.json (user secrets)
-       │
-       ▼
-   validate.sh (check required fields)
-       │
-       ▼
-   check-deps.sh (install/build dependencies)
-       │
-       ├── curl, jq (system packages)
-       ├── Go → builds vendor/opencode
-       └── Bun → builds vendor/oh-my-opencode
-       │
-       ▼
-   generate-configs.sh (template substitution)
-       │
-       ├── opencode.json.tmpl → ~/.config/opencode/opencode.json
-       ├── dcp.jsonc.tmpl → ~/.config/opencode/dcp.jsonc
-       └── oh-my-opencode.json.tmpl → ~/.config/opencode/oh-my-opencode.json
-```
+3. Test relay directly on server:
+   ```bash
+   ssh pi-relay 'curl http://localhost:8080/health'
+   ```
 
-### oh-my-opencode Modifications
+### SSH Tunnel Issues
 
-The forked oh-my-opencode includes sovereign-agent integration:
-
-**New modules in `src/config/`:**
-
-1. **`sovereign-config.ts`** - Unified config loader
-   - Loads `config.json` from multiple locations
-   - Maps agent names to model roles
-   - Exports: `loadSovereignConfig()`, `getModelForAgent()`, `getModelForRole()`
-
-2. **`dcp-prompts.ts`** - DCP awareness prompts
-   - Provides context management instructions to agents
-   - Role-specific variants (orchestrator, researcher, planner)
-   - Exports: `getDCPPromptForAgent()`, `getDCPPromptForRole()`
-
-**Modified agent files:**
-- All 7 agents use `getModelForAgent()` instead of hardcoded models
-- Orchestrator agents (Sisyphus, oracle) inject DCP awareness prompts
-
-## Development Setup
-
-### Prerequisites
-
-- Git
-- Bash 4.0+
-- Go 1.21+ (for building OpenCode)
-- Bun 1.0+ (for building oh-my-opencode)
-- jq (for JSON processing)
-
-### Clone and Initialize
+**Symptom**: `SSH tunnel already running` but not working
 
 ```bash
-git clone --recursive https://github.com/lachlan-jones5/sovereign-agent.git
-cd sovereign-agent
-
-# If submodules weren't cloned
-git submodule update --init --recursive
+# Force stop and restart
+./lib/ssh-relay.sh stop
+rm -f /tmp/sovereign-ssh-tunnel.*
+./lib/ssh-relay.sh start pi-relay
 ```
 
-### Configure Upstream Remotes
+### Docker Issues
 
-The submodules should already have upstream configured:
+**Symptom**: Container can't access SSH keys
 
 ```bash
-# Verify
-cd vendor/opencode
-git remote -v
-# Should show:
-#   origin    https://github.com/lachlan-jones5/opencode.git
-#   upstream  https://github.com/sst/opencode.git
-
-cd ../oh-my-opencode
-git remote -v
-# Should show:
-#   origin    https://github.com/lachlan-jones5/oh-my-opencode.git
-#   upstream  https://github.com/code-yeongyu/oh-my-opencode.git
+# Mount SSH directory
+docker compose run --rm -v ~/.ssh:/root/.ssh:ro agent ./lib/ssh-relay.sh run pi-relay
 ```
+
+---
 
 ## Testing
 
@@ -535,107 +561,26 @@ git remote -v
 ```bash
 # Shell script tests
 ./tests/test-validate.sh
-./tests/test-generate-configs.sh
-./tests/test-check-deps.sh
-./tests/test-install.sh
-./tests/test-sync-upstream.sh
+./tests/test-relay.sh
+./tests/test-ssh-relay.sh
 
-# oh-my-opencode TypeScript tests
-cd vendor/oh-my-opencode
-bun test
+# Relay TypeScript tests
+cd relay && bun test
 
-# Specific test file
-bun test src/config/sovereign-config.test.ts
-```
-
-### Test Coverage
-
-```bash
-cd vendor/oh-my-opencode
-bun test --coverage
+# oh-my-opencode tests
+cd vendor/oh-my-opencode && bun test
 ```
 
 ### Current Test Stats
 
 | Component | Tests | Status |
 |-----------|-------|--------|
-| Shell scripts | 49 | Passing |
-| oh-my-opencode TypeScript | 873 | Passing |
-| **Total** | **922** | **Passing** |
+| Shell scripts | 401 | Passing |
+| Relay TypeScript | 46 | Passing |
+| oh-my-opencode | 1,016 | Passing |
+| **Total** | **1,463** | **Passing** |
 
-## Adding New Agents
-
-To add a new agent that uses sovereign-agent configuration:
-
-1. Create the agent file in `vendor/oh-my-opencode/src/agents/`:
-
-```typescript
-import { getModelForAgent } from "../config/sovereign-config";
-import { getDCPPromptForAgent } from "../config/dcp-prompts";
-
-// Get model from unified config
-const MODEL = getModelForAgent("my-new-agent");
-
-// For orchestrator-type agents, include DCP prompt
-const systemPrompt = `${getDCPPromptForAgent("my-new-agent")}
-
-Your agent-specific instructions here...`;
-```
-
-2. Add the agent mapping in `sovereign-config.ts`:
-
-```typescript
-const AGENT_ROLE_MAP: Record<string, ModelRole> = {
-  // ... existing mappings
-  "my-new-agent": "orchestrator", // or "planner", "librarian", "fallback"
-};
-```
-
-3. Add tests in `src/agents/my-new-agent.test.ts`
-
-4. Export from `src/agents/index.ts`
-
-## Template Variables
-
-Templates use `{{VARIABLE}}` syntax. Available variables:
-
-| Variable | Source |
-|----------|--------|
-| `{{OPENROUTER_API_KEY}}` | `config.json` → `openrouter_api_key` |
-| `{{SITE_URL}}` | `config.json` → `site_url` |
-| `{{SITE_NAME}}` | `config.json` → `site_name` |
-| `{{ORCHESTRATOR_MODEL}}` | `config.json` → `models.orchestrator` |
-| `{{PLANNER_MODEL}}` | `config.json` → `models.planner` |
-| `{{LIBRARIAN_MODEL}}` | `config.json` → `models.librarian` |
-| `{{FALLBACK_MODEL}}` | `config.json` → `models.fallback` |
-| `{{ULTRAWORK_MAX_ITERATIONS}}` | `config.json` → `preferences.ultrawork_max_iterations` |
-| `{{DCP_TURN_PROTECTION}}` | `config.json` → `preferences.dcp_turn_protection` |
-| `{{DCP_ERROR_RETENTION_TURNS}}` | `config.json` → `preferences.dcp_error_retention_turns` |
-| `{{DCP_NUDGE_FREQUENCY}}` | `config.json` → `preferences.dcp_nudge_frequency` |
-
-## Debugging
-
-### Verbose Installation
-
-```bash
-bash -x ./install.sh
-```
-
-### Check Generated Configs
-
-```bash
-cat ~/.config/opencode/opencode.json | jq .
-cat ~/.config/opencode/dcp.jsonc
-cat ~/.config/opencode/oh-my-opencode.json | jq .
-```
-
-### Validate Config Manually
-
-```bash
-source lib/validate.sh
-validate_config config.json
-echo $?  # 0 = valid
-```
+---
 
 ## Contributing
 
@@ -645,11 +590,7 @@ echo $?  # 0 = valid
 4. Run `./tests/run-tests.sh` to verify
 5. Submit a pull request
 
-### Code Style
-
-- Shell scripts: Use `shellcheck` for linting
-- TypeScript: Follow existing patterns in oh-my-opencode
-- Tests: Aim for >80% coverage on new code
+---
 
 ## License
 

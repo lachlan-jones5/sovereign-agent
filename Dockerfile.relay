@@ -1,0 +1,43 @@
+# Dockerfile.relay - Lightweight Sovereign Agent Relay
+#
+# This builds a minimal image for running just the API relay service.
+# Use this on your trusted server to forward requests to OpenRouter.
+#
+# Usage:
+#   docker build -f Dockerfile.relay -t sovereign-relay .
+#   docker run -d -p 127.0.0.1:8080:8080 -v ./config.json:/app/config.json:ro sovereign-relay
+#
+# The image is ~100MB compared to ~500MB for the full agent.
+
+FROM oven/bun:1.1-alpine
+
+LABEL org.opencontainers.image.title="Sovereign Agent Relay"
+LABEL org.opencontainers.image.description="API relay for Sovereign Agent"
+LABEL org.opencontainers.image.source="https://github.com/lachlan-jones5/sovereign-agent"
+
+# Install curl for health checks
+RUN apk add --no-cache curl
+
+WORKDIR /app
+
+# Copy relay source and create minimal package.json
+COPY relay/main.ts ./relay/
+RUN echo '{"name":"sovereign-relay","type":"module"}' > ./relay/package.json
+
+WORKDIR /app/relay
+
+# Default environment
+ENV CONFIG_PATH=/app/config.json
+ENV RELAY_PORT=8080
+ENV RELAY_HOST=0.0.0.0
+ENV LOG_LEVEL=info
+
+# Expose relay port
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8080/health || exit 1
+
+# Run the relay
+CMD ["bun", "run", "main.ts"]

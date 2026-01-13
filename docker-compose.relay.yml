@@ -1,0 +1,74 @@
+# docker-compose.relay.yml - Sovereign Agent Relay Server
+#
+# This runs ONLY the relay service (not the full agent).
+# Use this on your trusted server (Pi, home server, etc.)
+#
+# Quick start:
+#   1. Copy config.json.example to config.json
+#   2. Add your OpenRouter API key
+#   3. Set relay.enabled=true and relay.mode=server
+#   4. docker compose -f docker-compose.relay.yml up -d
+#
+# The relay will:
+#   - Listen on localhost:8080 (SSH tunnel required for remote access)
+#   - Forward requests to OpenRouter with your API key
+#   - Track request/token statistics
+#
+# Security:
+#   - Bind to 127.0.0.1 only (clients connect via SSH tunnel)
+#   - Only whitelisted API paths are forwarded
+#   - API key never exposed to clients
+
+services:
+  relay:
+    build:
+      context: .
+      dockerfile: Dockerfile.relay
+    image: sovereign-relay:latest
+    container_name: sovereign-relay
+    restart: unless-stopped
+    
+    # Only bind to localhost - clients use SSH tunnel
+    ports:
+      - "127.0.0.1:8080:8080"
+    
+    # Mount config file (read-only)
+    volumes:
+      - ./config.json:/app/config.json:ro
+    
+    environment:
+      - CONFIG_PATH=/app/config.json
+      - RELAY_PORT=8080
+      - RELAY_HOST=0.0.0.0
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    
+    # Resource limits (relay is lightweight)
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.5'
+        reservations:
+          memory: 32M
+
+  # Optional: Expose relay via Tailscale/WireGuard instead of SSH
+  # Uncomment and configure if you prefer VPN over SSH tunnels
+  #
+  # relay-public:
+  #   extends: relay
+  #   ports:
+  #     - "0.0.0.0:8080:8080"  # Expose to all interfaces
+  #   # Add authentication middleware or use Tailscale network
