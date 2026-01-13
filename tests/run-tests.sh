@@ -69,6 +69,7 @@ run_test_suite "Oscillation Detector Tests" "$SCRIPT_DIR/test-oscillation-detect
 run_test_suite "Plugin Version Pinning Tests" "$SCRIPT_DIR/test-plugin-version-pinning.sh"
 run_test_suite "Bash Permissions Tests" "$SCRIPT_DIR/test-bash-permissions.sh"
 run_test_suite "DCP Cache Documentation Tests" "$SCRIPT_DIR/test-dcp-cache-documentation.sh"
+run_test_suite "Relay Tests" "$SCRIPT_DIR/test-relay.sh"
 run_omo_tests
 
 # Summary

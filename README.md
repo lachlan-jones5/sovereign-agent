@@ -181,6 +181,145 @@ All API calls route through OpenRouter with Zero Data Retention (ZDR) enabled:
 
 The `site_url` and `site_name` fields are sent to OpenRouter for attribution but contain no sensitive data.
 
+## SSH Relay Mode
+
+For environments where you want to route API traffic through a trusted server (e.g., to avoid network monitoring), sovereign-agent supports a client-server relay architecture.
+
+### Architecture
+
+```
+Work VM (client)      Laptop (jump)       Pi (server)         OpenRouter
+     │                    │                   │                   │
+     │─── SSH tunnel ────▶│                   │                   │
+     │                    │─── SSH tunnel ───▶│                   │
+     │                    │                   │─── HTTPS ────────▶│
+```
+
+- **Server (Pi)**: Has config.json with API key, runs relay service
+- **Client (Work VM)**: Runs OpenCode, connects via SSH tunnel
+- **Jump Host (Laptop)**: Optional SSH proxy for routing
+
+### Quick Setup
+
+#### On Server (Pi)
+
+```bash
+# Setup sovereign-agent with your API key
+cp config.json.example config.json
+# Edit config.json: set openrouter_api_key, relay.enabled=true, relay.mode=server
+
+# Start the relay
+cd relay
+./start-relay.sh daemon
+```
+
+#### On Client (Work VM)
+
+```bash
+# Setup with client config
+cp config.client.example config.json
+./install.sh
+
+# Connect via SSH tunnel and run OpenCode
+./lib/ssh-relay.sh run pi-relay
+```
+
+### Configuration
+
+**Server mode** (`config.json` on Pi):
+```json
+{
+  "openrouter_api_key": "sk-or-v1-your-key",
+  "relay": {
+    "enabled": true,
+    "mode": "server",
+    "port": 8080
+  }
+}
+```
+
+**Client mode** (`config.json` on Work VM):
+```json
+{
+  "relay": {
+    "enabled": true,
+    "mode": "client",
+    "port": 8080
+  }
+}
+```
+
+### SSH Configuration
+
+Add to `~/.ssh/config` on Work VM:
+
+```ssh-config
+Host laptop
+    HostName laptop.local
+    User youruser
+    IdentityFile ~/.ssh/laptop_key
+
+Host pi-relay
+    HostName pi.local               # Pi's address (from laptop's perspective)
+    User pi
+    ProxyJump laptop                # Route through laptop
+    IdentityFile ~/.ssh/pi_key
+    ServerAliveInterval 30
+```
+
+### Multi-Hop Configurations
+
+SSH's `ProxyJump` supports chaining through multiple nodes. The relay architecture is SSH-agnostic - it only requires a tunnel to the relay service.
+
+**Two-hop example** (Work VM → Laptop → Pi):
+```ssh-config
+Host pi-relay
+    HostName pi.local
+    ProxyJump laptop
+```
+
+**Three-hop example** (Work VM → Bastion → Laptop → Pi):
+```ssh-config
+Host pi-relay
+    HostName pi.local
+    ProxyJump bastion,laptop
+```
+
+**Direct connection** (Work VM → Pi, no jump host):
+```ssh-config
+Host pi-relay
+    HostName your-pi.duckdns.org
+    Port 22
+```
+
+The tunnel command remains the same regardless of hops:
+```bash
+./lib/ssh-relay.sh run pi-relay
+```
+
+### Relay Scripts
+
+| Script | Location | Purpose |
+|--------|----------|---------|
+| `start-relay.sh` | Server (Pi) | Start/stop the API relay service |
+| `ssh-relay.sh` | Client (Work VM) | Manage SSH tunnel and run OpenCode |
+
+**Server commands:**
+```bash
+cd relay
+./start-relay.sh daemon    # Start in background
+./start-relay.sh status    # Check status
+./start-relay.sh stop      # Stop relay
+```
+
+**Client commands:**
+```bash
+./lib/ssh-relay.sh run pi-relay      # Start tunnel + OpenCode
+./lib/ssh-relay.sh start pi-relay    # Start tunnel only
+./lib/ssh-relay.sh status            # Check tunnel status
+./lib/ssh-relay.sh stop              # Stop tunnel
+```
+
 ## Docker Usage
 
 ### Building the Image

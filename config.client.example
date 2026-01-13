@@ -1,7 +1,7 @@
 {
-  "openrouter_api_key": "sk-or-v1-your-api-key-here",
-  "site_url": "https://mycompany.internal",
-  "site_name": "MyCompany",
+  "openrouter_api_key": "",
+  "site_url": "https://localhost",
+  "site_name": "SovereignAgent-Client",
 
   "models": {
     "orchestrator": "deepseek/deepseek-v3",
@@ -42,14 +42,8 @@
   },
 
   "relay": {
-    "enabled": false,
-    "mode": "server",
-    "port": 8080,
-    "allowed_paths": [
-      "/api/v1/chat/completions",
-      "/api/v1/completions",
-      "/api/v1/models",
-      "/api/v1/auth/key"
-    ]
+    "enabled": true,
+    "mode": "client",
+    "port": 8080
   }
 }

@@ -126,6 +126,25 @@ generate_from_template() {
         oh_my_opencode_version="latest"
     fi
 
+    # Relay configuration
+    local relay_enabled
+    relay_enabled=$(get_config_value "$config_file" '.relay.enabled' 'false')
+    
+    local relay_mode
+    relay_mode=$(get_config_value "$config_file" '.relay.mode' 'server')
+    
+    local relay_port
+    relay_port=$(get_config_value "$config_file" '.relay.port' '8080')
+    
+    local relay_base_url
+    if [[ "$relay_enabled" == "true" && "$relay_mode" == "client" ]]; then
+        # Client mode: point at local relay tunnel
+        relay_base_url="http://localhost:${relay_port}"
+    else
+        # Server mode or disabled: use OpenRouter directly
+        relay_base_url="https://openrouter.ai"
+    fi
+
     # Bash tool permissions (granular control)
     local bash_permission_mode
     bash_permission_mode=$(get_config_value "$config_file" '.tool_permissions.bash.mode' 'blocklist')
@@ -165,6 +184,7 @@ generate_from_template() {
     content="${content//\{\{BASH_ALLOWED_COMMANDS\}\}/$bash_allowed_commands}"
     content="${content//\{\{BASH_BLOCKED_COMMANDS\}\}/$bash_blocked_commands}"
     content="${content//\{\{BASH_BLOCKED_PATTERNS\}\}/$bash_blocked_patterns}"
+    content="${content//\{\{RELAY_BASE_URL\}\}/$relay_base_url}"
 
     # Create output directory if needed
     local output_dir
