@@ -36,6 +36,9 @@ On your trusted machine (Pi, home server, VPS):
 ```bash
 # One-liner setup (prompts for API key)
 curl -fsSL https://raw.githubusercontent.com/lachlan-jones5/sovereign-agent/master/scripts/setup-relay.sh | bash
+
+# Or non-interactive with API key as env var
+curl -fsSL https://raw.githubusercontent.com/lachlan-jones5/sovereign-agent/master/scripts/setup-relay.sh | OPENROUTER_API_KEY=sk-or-... bash
 ```
 
 Or manually:
