@@ -514,6 +514,54 @@ rm -f /tmp/sovereign-ssh-tunnel.*
 ./lib/ssh-relay.sh start pi-relay
 ```
 
+### Work VM Dev Environment in Docker
+
+If your dev environment on the Work VM runs inside a Docker container, `localhost:8080` won't reach the host's tunnel. Here's how to fix it:
+
+**Step 1: Create SSH tunnel from inside the container back to the host**
+
+From inside your dev container, create a tunnel to the host machine:
+
+```bash
+# Find your host's IP (from inside container)
+ip route | grep default
+# Example output: default via 10.1.4.1 dev eth0 ...
+
+# Create tunnel from container to host's localhost
+ssh -L 8081:127.0.0.1:8081 youruser@10.1.4.1 -N &
+```
+
+Now `localhost:8081` inside the container reaches the host's tunnel.
+
+**Step 2: Use the correct relay hostname in your laptop's tunnel**
+
+When creating the reverse tunnel from your laptop, use the relay's actual hostname or DDNS - not your SSH config alias:
+
+```bash
+# Wrong - Work VM doesn't know your laptop's SSH aliases
+ssh -R 8081:stoneward:8081 workvm -N
+
+# Correct - use actual hostname, IP, or DDNS
+ssh -R 8081:192.168.1.50:8081 workvm -N
+ssh -R 8081:mypi.ddns.net:8081 workvm -N
+```
+
+**Step 3: Run setup inside the container**
+
+```bash
+curl -fsSL http://localhost:8081/setup | bash
+```
+
+**Alternative: Use Docker host networking**
+
+If you can modify how your dev container starts, use host networking:
+
+```bash
+docker run --network host ...
+```
+
+Then `localhost:8081` inside the container directly reaches the host.
+
 ### Docker Issues
 
 **Symptom**: Container can't access SSH keys
