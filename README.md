@@ -122,8 +122,8 @@ Create `config.json` with your API key and relay settings:
 ```json
 {
   "openrouter_api_key": "sk-or-v1-your-api-key-here",
-  "site_url": "https://mycompany.internal",
-  "site_name": "MyCompany",
+  "site_url": "https://github.com/lachlan-jones5/sovereign-agent",
+  "site_name": "SovereignAgent",
 
   "models": {
     "orchestrator": "deepseek/deepseek-v3",
@@ -232,8 +232,8 @@ Create `config.json` with relay client settings (note: `openrouter_api_key` is e
 ```json
 {
   "openrouter_api_key": "",
-  "site_url": "https://localhost",
-  "site_name": "SovereignAgent-Client",
+  "site_url": "https://github.com/lachlan-jones5/sovereign-agent",
+  "site_name": "SovereignAgent",
 
   "models": {
     "orchestrator": "deepseek/deepseek-v3",

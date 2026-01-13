@@ -1,7 +1,7 @@
 {
   "openrouter_api_key": "sk-or-v1-your-api-key-here",
-  "site_url": "https://mycompany.internal",
-  "site_name": "MyCompany",
+  "site_url": "https://github.com/lachlan-jones5/sovereign-agent",
+  "site_name": "SovereignAgent",
 
   "models": {
     "orchestrator": "deepseek/deepseek-v3",

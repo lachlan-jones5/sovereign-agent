@@ -1,7 +1,7 @@
 {
   "openrouter_api_key": "",
-  "site_url": "https://localhost",
-  "site_name": "SovereignAgent-Client",
+  "site_url": "https://github.com/lachlan-jones5/sovereign-agent",
+  "site_name": "SovereignAgent",
 
   "models": {
     "orchestrator": "deepseek/deepseek-v3",
