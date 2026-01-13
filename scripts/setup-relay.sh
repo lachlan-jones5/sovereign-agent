@@ -111,11 +111,26 @@ echo ""
 echo "Starting relay on port $RELAY_PORT..."
 
 # Kill any existing relay process to free the port
-if curl -s "http://localhost:$RELAY_PORT/health" &>/dev/null; then
-    echo "Relay already running on port $RELAY_PORT - stopping..."
-    pkill -f 'bun.*main.ts' 2>/dev/null || true
+# Check both localhost and 0.0.0.0, and also check if port is in use
+if curl -s "http://localhost:$RELAY_PORT/health" &>/dev/null || \
+   curl -s "http://127.0.0.1:$RELAY_PORT/health" &>/dev/null || \
+   ss -tlnp 2>/dev/null | grep -q ":$RELAY_PORT " || \
+   netstat -tlnp 2>/dev/null | grep -q ":$RELAY_PORT "; then
+    echo "Port $RELAY_PORT in use - stopping existing processes..."
+    # Try without sudo first, then with sudo if available
+    pkill -f 'bun.*main.ts' 2>/dev/null || sudo pkill -f 'bun.*main.ts' 2>/dev/null || true
     docker stop sovereign-relay 2>/dev/null || true
+    docker rm sovereign-relay 2>/dev/null || true
     sleep 2
+    
+    # Verify port is free
+    if ss -tlnp 2>/dev/null | grep -q ":$RELAY_PORT " || \
+       netstat -tlnp 2>/dev/null | grep -q ":$RELAY_PORT "; then
+        echo "ERROR: Port $RELAY_PORT still in use. Please manually stop the process:"
+        echo "  sudo lsof -i :$RELAY_PORT"
+        echo "  sudo kill <PID>"
+        exit 1
+    fi
 fi
 
 if $HAS_DOCKER; then
