@@ -54,9 +54,20 @@ validate_config() {
 
     local errors=0
 
-    # Required fields
+    # Check if relay mode is enabled (client mode doesn't need API key)
+    local relay_enabled
+    local relay_mode
+    relay_enabled=$(jq -r '.relay.enabled // false' "$config_file")
+    relay_mode=$(jq -r '.relay.mode // empty' "$config_file")
+    
+    local is_relay_client=false
+    if [[ "$relay_enabled" == "true" && "$relay_mode" == "client" ]]; then
+        is_relay_client=true
+        log_info "Relay client mode detected - API key not required locally"
+    fi
+
+    # Required fields (API key only required if not in relay client mode)
     local required_fields=(
-        ".openrouter_api_key"
         ".site_url"
         ".site_name"
         ".models.orchestrator"
@@ -75,17 +86,26 @@ validate_config() {
         fi
     done
 
-    # Validate API key format
+    # Validate API key (only required for non-relay-client mode)
     local api_key
     api_key=$(jq -r '.openrouter_api_key // empty' "$config_file")
     
-    if [[ -n "$api_key" && "$api_key" == "sk-or-v1-your-api-key-here" ]]; then
-        log_error "Please replace the placeholder API key with your actual OpenRouter API key"
-        ((errors++))
-    fi
-
-    if [[ -n "$api_key" && ! "$api_key" =~ ^sk-or- ]]; then
-        log_warn "API key doesn't start with 'sk-or-' - are you sure this is an OpenRouter key?"
+    if [[ "$is_relay_client" == "false" ]]; then
+        # API key is required for direct mode
+        if [[ -z "$api_key" ]]; then
+            log_error "Missing required field: .openrouter_api_key"
+            ((errors++))
+        elif [[ "$api_key" == "sk-or-v1-your-api-key-here" ]]; then
+            log_error "Please replace the placeholder API key with your actual OpenRouter API key"
+            ((errors++))
+        elif [[ ! "$api_key" =~ ^sk-or- ]]; then
+            log_warn "API key doesn't start with 'sk-or-' - are you sure this is an OpenRouter key?"
+        fi
+    else
+        # Relay client mode - API key is optional (can be empty)
+        if [[ -n "$api_key" && "$api_key" != "" && ! "$api_key" =~ ^sk-or- ]]; then
+            log_warn "API key provided but doesn't start with 'sk-or-' - are you sure this is an OpenRouter key?"
+        fi
     fi
 
     # Validate optional preferences (set defaults if missing)

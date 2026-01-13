@@ -182,11 +182,11 @@ else
     fail "Bundle endpoint should verify essential files exist"
 fi
 
-# Test: Bundle endpoint checks for empty tarball
-if grep -q 'tarball\.length === 0\|tarball is empty\|Bundle is empty' "$PROJECT_ROOT/relay/main.ts"; then
-    pass "Bundle endpoint checks for empty tarball"
+# Test: Bundle endpoint verifies essential files exist before streaming
+if grep -q 'install\.sh.*lib.*relay\|ls.*install\.sh' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Bundle endpoint verifies essential files exist before streaming"
 else
-    fail "Bundle endpoint should check for empty tarball"
+    fail "Bundle endpoint should verify essential files exist before streaming"
 fi
 
 # Test: Bundle endpoint returns 500 error with details on failure
@@ -271,6 +271,41 @@ if grep -q 'application/gzip' "$PROJECT_ROOT/relay/main.ts"; then
     pass "Bundle returns application/gzip content type"
 else
     fail "Bundle should return application/gzip content type"
+fi
+
+# Test: Bundle endpoint uses streaming (execStream)
+if grep -q 'execStream\|ReadableStream' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Bundle endpoint uses streaming for large downloads"
+else
+    fail "Bundle endpoint should use streaming for large downloads"
+fi
+
+# Test: Bundle endpoint adds Content-Length header for progress
+if grep -q 'Content-Length' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Bundle endpoint adds Content-Length header for progress"
+else
+    fail "Bundle endpoint should add Content-Length header for curl progress"
+fi
+
+# Test: Setup script uses curl with progress bar (-#)
+if grep -q 'curl -#\|curl.*-#' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Setup script uses curl with progress bar"
+else
+    fail "Setup script should use curl with progress bar (-#)"
+fi
+
+# Test: Setup script downloads to temp file first
+if grep -q 'mktemp\|BUNDLE_TMP' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Setup script downloads to temp file first"
+else
+    fail "Setup script should download to temp file to avoid partial extraction"
+fi
+
+# Test: Setup script cleans up temp file on failure
+if grep -q 'rm -f.*TMP\|rm.*BUNDLE_TMP' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Setup script cleans up temp file on failure"
+else
+    fail "Setup script should clean up temp file on failure"
 fi
 
 # ============================================
@@ -491,6 +526,123 @@ if grep -q '"port".*RELAY_PORT\|port.*\$RELAY_PORT' "$PROJECT_ROOT/relay/main.ts
     pass "Setup script sets relay port in config"
 else
     fail "Setup script should set relay port in config"
+fi
+
+# Test: Setup script sets relay.mode to client
+if grep -q '"mode".*client\|mode.*client' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Setup script sets relay.mode to client"
+else
+    fail "Setup script should set relay.mode to client"
+fi
+
+# Test: Setup script sets relay.enabled to true
+if grep -q '"enabled".*true\|enabled.*true' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Setup script sets relay.enabled to true"
+else
+    fail "Setup script should set relay.enabled to true"
+fi
+
+# Test: Setup script always overwrites config.json (fresh install)
+if grep -q 'always overwrite\|Creating relay client config' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Setup script always overwrites config.json for fresh install"
+else
+    fail "Setup script should always overwrite config.json for fresh install"
+fi
+
+# ============================================
+# Existing OpenCode Installation Handling
+# ============================================
+echo ""
+echo "--- Existing OpenCode Installation Handling ---"
+
+# Test: Setup script checks for existing OpenCode config
+if grep -q 'OPENCODE_CONFIG_DIR\|\.config/opencode' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Setup script checks for existing OpenCode config"
+else
+    fail "Setup script should check for existing OpenCode config"
+fi
+
+# Test: Setup script backs up existing OpenCode config
+if grep -q 'backup\|Backup\|BACKUP' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Setup script backs up existing OpenCode config"
+else
+    fail "Setup script should back up existing OpenCode config"
+fi
+
+# Test: Backup directory includes timestamp
+if grep -q 'backup.*date\|date.*backup\|%Y%m%d\|+%Y' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Backup directory includes timestamp"
+else
+    fail "Backup directory should include timestamp"
+fi
+
+# Test: Setup script moves existing config to backup
+if grep -q 'mv.*OPENCODE_CONFIG_DIR\|mv.*opencode.*backup' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Setup script moves existing config to backup"
+else
+    fail "Setup script should move existing config to backup"
+fi
+
+# Test: Setup script informs user about backup
+if grep -q 'Existing.*found\|Backing up' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Setup script informs user about backup"
+else
+    fail "Setup script should inform user about backup"
+fi
+
+# ============================================
+# Relay Mode Validation (validate.sh)
+# ============================================
+echo ""
+echo "--- Relay Mode Validation (validate.sh) ---"
+
+# Test: validate.sh checks for relay mode
+if grep -q 'relay.*enabled\|relay\.enabled' "$PROJECT_ROOT/lib/validate.sh"; then
+    pass "validate.sh checks for relay mode"
+else
+    fail "validate.sh should check for relay mode"
+fi
+
+# Test: validate.sh checks for relay client mode
+if grep -q 'relay.*mode\|relay\.mode\|client' "$PROJECT_ROOT/lib/validate.sh"; then
+    pass "validate.sh checks for relay client mode"
+else
+    fail "validate.sh should check for relay client mode"
+fi
+
+# Test: validate.sh skips API key check for relay client mode
+if grep -q 'is_relay_client\|relay.*client.*API\|API.*key.*not required' "$PROJECT_ROOT/lib/validate.sh"; then
+    pass "validate.sh skips API key check for relay client mode"
+else
+    fail "validate.sh should skip API key check for relay client mode"
+fi
+
+# Test: validate.sh logs that relay client mode detected
+if grep -q 'Relay client mode\|relay.*mode.*detected' "$PROJECT_ROOT/lib/validate.sh"; then
+    pass "validate.sh logs relay client mode detection"
+else
+    fail "validate.sh should log relay client mode detection"
+fi
+
+# Test: validate.sh still requires other fields in relay mode
+REQUIRED_FIELDS=(".site_url" ".site_name" ".models.orchestrator" ".models.planner")
+all_required_found=true
+for field in "${REQUIRED_FIELDS[@]}"; do
+    if ! grep -q "$field" "$PROJECT_ROOT/lib/validate.sh"; then
+        all_required_found=false
+    fi
+done
+if [[ "$all_required_found" == "true" ]]; then
+    pass "validate.sh still requires site_url, site_name, and model fields"
+else
+    fail "validate.sh should still require site_url, site_name, and model fields"
+fi
+
+# Test: validate.sh handles empty API key for relay client mode
+if grep -q 'is_relay_client.*false\|API key is required' "$PROJECT_ROOT/lib/validate.sh"; then
+    pass "validate.sh handles empty API key appropriately per mode"
+else
+    fail "validate.sh should handle empty API key appropriately per mode"
 fi
 
 # ============================================

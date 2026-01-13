@@ -226,6 +226,17 @@ fi
 echo "Relay connection OK"
 echo ""
 
+# Handle existing OpenCode installation
+OPENCODE_CONFIG_DIR="\$HOME/.config/opencode"
+if [[ -d "\$OPENCODE_CONFIG_DIR" ]]; then
+    BACKUP_DIR="\$HOME/.config/opencode.backup.\$(date +%Y%m%d_%H%M%S)"
+    echo "Existing OpenCode config found at \$OPENCODE_CONFIG_DIR"
+    echo "Backing up to \$BACKUP_DIR..."
+    mv "\$OPENCODE_CONFIG_DIR" "\$BACKUP_DIR"
+    echo "Backup complete"
+    echo ""
+fi
+
 # Check for required tools and install if missing FIRST
 echo "Checking dependencies..."
 
@@ -308,10 +319,9 @@ if ! tar -xzf "\$BUNDLE_TMP"; then
 fi
 rm -f "\$BUNDLE_TMP"
 
-# Create client config
-if [[ ! -f config.json ]]; then
-    echo "Creating client config..."
-    cat > config.json <<CONFIGEOF
+# Create client config (always overwrite for fresh relay client setup)
+echo "Creating relay client config..."
+cat > config.json <<CONFIGEOF
 {
   "openrouter_api_key": "",
   "site_url": "https://github.com/lachlan-jones5/sovereign-agent",
@@ -331,7 +341,6 @@ if [[ ! -f config.json ]]; then
   }
 }
 CONFIGEOF
-fi
 
 # Verify bundle was extracted correctly
 if [[ ! -f install.sh ]]; then
