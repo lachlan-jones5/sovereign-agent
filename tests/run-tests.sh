@@ -70,7 +70,30 @@ run_test_suite "Plugin Version Pinning Tests" "$SCRIPT_DIR/test-plugin-version-p
 run_test_suite "Bash Permissions Tests" "$SCRIPT_DIR/test-bash-permissions.sh"
 run_test_suite "DCP Cache Documentation Tests" "$SCRIPT_DIR/test-dcp-cache-documentation.sh"
 run_test_suite "Relay Tests" "$SCRIPT_DIR/test-relay.sh"
+run_test_suite "SSH Relay Tests" "$SCRIPT_DIR/test-ssh-relay.sh"
+run_test_suite "Network Firewall Execution Tests" "$SCRIPT_DIR/test-network-firewall-execution.sh"
+run_test_suite "Budget Firewall Execution Tests" "$SCRIPT_DIR/test-budget-firewall-execution.sh"
+run_test_suite "Oscillation Detector Execution Tests" "$SCRIPT_DIR/test-oscillation-detector-execution.sh"
+run_test_suite "Error Handling Tests" "$SCRIPT_DIR/test-error-handling.sh"
+run_test_suite "Budget Calculation Tests" "$SCRIPT_DIR/test-budget-calculations.sh"
+run_test_suite "JSON Schema Validation Tests" "$SCRIPT_DIR/test-json-schema.sh"
+run_test_suite "Edge Case Tests" "$SCRIPT_DIR/test-edge-cases.sh"
+
+# Run TypeScript tests
 run_omo_tests
+
+# Run relay TypeScript tests if Bun is available
+if command -v bun &> /dev/null && [[ -f "$PROJECT_DIR/relay/main.test.ts" ]]; then
+    echo -e "\n${BLUE}>>> Running: Relay TypeScript Tests${NC}\n"
+    cd "$PROJECT_DIR/relay"
+    if bun test 2>&1; then
+        echo -e "\n${GREEN}Relay TypeScript Tests: PASSED${NC}"
+    else
+        echo -e "\n${RED}Relay TypeScript Tests: FAILED${NC}"
+        FAILED_SUITES+=("Relay TypeScript Tests")
+    fi
+    cd "$PROJECT_DIR"
+fi
 
 # Summary
 echo -e "\n${BOLD}${BLUE}"
