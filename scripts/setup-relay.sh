@@ -1,17 +1,17 @@
 #!/bin/bash
 # setup-relay.sh - Quick relay server setup
 #
-# Usage:
-#   curl -fsSL https://raw.githubusercontent.com/lachlan-jones5/sovereign-agent/master/scripts/setup-relay.sh | bash
+# Usage (download and run):
+#   bash <(curl -fsSL https://raw.githubusercontent.com/lachlan-jones5/sovereign-agent/master/scripts/setup-relay.sh)
 #
-# Or with API key as env var (non-interactive):
-#   curl -fsSL ... | OPENROUTER_API_KEY=sk-or-... bash
+# Or with API key (non-interactive):
+#   OPENROUTER_API_KEY=sk-or-... bash <(curl -fsSL https://raw.githubusercontent.com/lachlan-jones5/sovereign-agent/master/scripts/setup-relay.sh)
 #
 # Or with custom port:
-#   curl -fsSL ... | RELAY_PORT=8081 OPENROUTER_API_KEY=sk-or-... bash
+#   RELAY_PORT=8081 OPENROUTER_API_KEY=sk-or-... bash <(curl -fsSL ...)
 #
 # This script:
-#   1. Clones the repo (no submodules - fast)
+#   1. Clones the repo into current directory (no submodules - fast)
 #   2. Prompts for your OpenRouter API key (or uses env var)
 #   3. Creates config.json
 #   4. Starts the relay
@@ -19,10 +19,12 @@
 set -euo pipefail
 
 RELAY_PORT="${RELAY_PORT:-8080}"
-INSTALL_DIR="${INSTALL_DIR:-$HOME/sovereign-agent}"
+INSTALL_DIR="${INSTALL_DIR:-$PWD/sovereign-agent}"
 API_KEY="${OPENROUTER_API_KEY:-}"
 
 echo "=== Sovereign Agent Relay Setup ==="
+echo ""
+echo "Installing to: $INSTALL_DIR"
 echo ""
 
 # Check for required tools
@@ -53,7 +55,7 @@ fi
 if [[ -d "$INSTALL_DIR" ]]; then
     echo "Directory $INSTALL_DIR already exists"
     cd "$INSTALL_DIR"
-    git pull --quiet
+    git pull --quiet || true
 else
     echo "Cloning sovereign-agent..."
     git clone --quiet https://github.com/lachlan-jones5/sovereign-agent.git "$INSTALL_DIR"
@@ -68,15 +70,15 @@ else
     if [[ -z "$API_KEY" ]]; then
         echo ""
         echo "Enter your OpenRouter API key (from https://openrouter.ai/keys):"
-        # Read from /dev/tty to work even when script is piped
-        read -r -s API_KEY < /dev/tty || {
+        # Read from /dev/tty to work even when script is piped or in process substitution
+        if ! read -r API_KEY </dev/tty 2>/dev/null; then
             echo ""
             echo "Error: Cannot read API key interactively."
             echo "Provide it via environment variable instead:"
             echo ""
-            echo "  curl -fsSL ... | OPENROUTER_API_KEY=sk-or-... bash"
+            echo "  OPENROUTER_API_KEY=sk-or-... bash <(curl -fsSL ...)"
             exit 1
-        }
+        fi
     fi
     
     if [[ -z "$API_KEY" ]]; then

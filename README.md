@@ -11,7 +11,7 @@ Sovereign Agent uses a **relay server** to keep your API keys secure on a truste
 - **Team deployments**: Centralized API key management with per-user access control
 
 ```
-┌──────────────┐                      ┌──────────────┐         ┌────────────┐
+┌──────────────┐                     ┌──────────────┐         ┌────────────┐
 │   Work VM    │◀── reverse tunnel ──│   Laptop     │────────▶│   Pi/VPS   │
 │   OpenCode   │     (from laptop)   │   (bridge)   │  SSH    │   relay    │
 │   :8080      │                     │              │         │   :8080    │
@@ -35,10 +35,10 @@ On your trusted machine (Pi, home server, VPS):
 
 ```bash
 # One-liner setup (prompts for API key)
-curl -fsSL https://raw.githubusercontent.com/lachlan-jones5/sovereign-agent/master/scripts/setup-relay.sh | bash
+bash <(curl -fsSL https://raw.githubusercontent.com/lachlan-jones5/sovereign-agent/master/scripts/setup-relay.sh)
 
 # Or non-interactive with API key as env var
-curl -fsSL https://raw.githubusercontent.com/lachlan-jones5/sovereign-agent/master/scripts/setup-relay.sh | OPENROUTER_API_KEY=sk-or-... bash
+OPENROUTER_API_KEY=sk-or-... bash <(curl -fsSL https://raw.githubusercontent.com/lachlan-jones5/sovereign-agent/master/scripts/setup-relay.sh)
 ```
 
 Or manually:
