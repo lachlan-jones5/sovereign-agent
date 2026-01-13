@@ -27,7 +27,7 @@ Choose **one** of these methods on your trusted machine (Pi, home server, or lap
 #### Option A: Docker (Recommended)
 
 ```bash
-git clone --recursive https://github.com/lachlan-jones5/sovereign-agent.git
+git clone --recurse-submodules --shallow-submodules https://github.com/lachlan-jones5/sovereign-agent.git
 cd sovereign-agent
 
 # Create server config with your API key
@@ -41,7 +41,7 @@ docker compose -f docker-compose.relay.yml up -d
 #### Option B: Native (Bun)
 
 ```bash
-git clone --recursive https://github.com/lachlan-jones5/sovereign-agent.git
+git clone --recurse-submodules --shallow-submodules https://github.com/lachlan-jones5/sovereign-agent.git
 cd sovereign-agent
 
 # Create server config
@@ -60,7 +60,7 @@ Choose **one** of these methods on your workstation:
 #### Option A: Docker
 
 ```bash
-git clone --recursive https://github.com/lachlan-jones5/sovereign-agent.git
+git clone --recurse-submodules --shallow-submodules https://github.com/lachlan-jones5/sovereign-agent.git
 cd sovereign-agent
 
 # Create client config (no API key needed)
@@ -73,7 +73,7 @@ docker compose run --rm agent ./lib/ssh-relay.sh run pi-relay
 #### Option B: Native
 
 ```bash
-git clone --recursive https://github.com/lachlan-jones5/sovereign-agent.git
+git clone --recurse-submodules --shallow-submodules https://github.com/lachlan-jones5/sovereign-agent.git
 cd sovereign-agent
 
 # Create client config and install
@@ -356,7 +356,7 @@ If you don't need the relay architecture, you can run sovereign-agent directly w
 ### Docker
 
 ```bash
-git clone --recursive https://github.com/lachlan-jones5/sovereign-agent.git
+git clone --recurse-submodules --shallow-submodules https://github.com/lachlan-jones5/sovereign-agent.git
 cd sovereign-agent
 
 # Create config with API key
@@ -370,7 +370,7 @@ docker compose run --rm agent
 ### Native
 
 ```bash
-git clone --recursive https://github.com/lachlan-jones5/sovereign-agent.git
+git clone --recurse-submodules --shallow-submodules https://github.com/lachlan-jones5/sovereign-agent.git
 cd sovereign-agent
 
 cp config.json.example config.json
