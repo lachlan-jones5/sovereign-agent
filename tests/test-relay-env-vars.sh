@@ -177,9 +177,16 @@ fi
 
 # Test: setup-relay.sh kills existing relay before restarting
 if grep -q 'pkill.*bun.*main.ts\|kill.*relay' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
-    pass "setup-relay.sh kills existing relay before restarting"
+    pass "setup-relay.sh kills existing bun relay before restarting"
 else
-    fail "setup-relay.sh should kill existing relay before restarting with new config"
+    fail "setup-relay.sh should kill existing bun relay before restarting with new config"
+fi
+
+# Test: setup-relay.sh stops docker container before restarting
+if grep -q 'docker stop sovereign-relay' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
+    pass "setup-relay.sh stops docker container before restarting"
+else
+    fail "setup-relay.sh should stop docker container before restarting"
 fi
 
 # Test: setup-relay.sh always starts relay (not conditional on not running)
@@ -216,6 +223,41 @@ if [[ "$START_SH_PORT" == "8080" && "$SETUP_SH_PORT" == "8080" ]]; then
     pass "All scripts use consistent default RELAY_PORT (8080)"
 else
     fail "Scripts have inconsistent default RELAY_PORT values (start: $START_SH_PORT, setup: $SETUP_SH_PORT)"
+fi
+
+# ============================================
+# Docker Compose environment variable tests
+# ============================================
+echo ""
+echo "--- Docker Compose Environment Variable Handling ---"
+
+# Test: docker-compose.relay.yml uses RELAY_HOST in port binding
+if grep -q 'RELAY_HOST:-127.0.0.1.*RELAY_PORT\|RELAY_HOST.*:.*RELAY_PORT' "$PROJECT_ROOT/docker-compose.relay.yml"; then
+    pass "docker-compose.relay.yml uses RELAY_HOST in port binding"
+else
+    fail "docker-compose.relay.yml should use RELAY_HOST in port binding"
+fi
+
+# Test: docker-compose.relay.yml has default RELAY_HOST of 127.0.0.1
+if grep -q 'RELAY_HOST:-127.0.0.1' "$PROJECT_ROOT/docker-compose.relay.yml"; then
+    pass "docker-compose.relay.yml defaults RELAY_HOST to 127.0.0.1"
+else
+    fail "docker-compose.relay.yml should default RELAY_HOST to 127.0.0.1"
+fi
+
+# Test: docker-compose.relay.yml documents RELAY_HOST usage
+if grep -q 'RELAY_HOST=0.0.0.0\|RELAY_HOST.*0.0.0.0' "$PROJECT_ROOT/docker-compose.relay.yml"; then
+    pass "docker-compose.relay.yml documents RELAY_HOST=0.0.0.0 example"
+else
+    fail "docker-compose.relay.yml should document RELAY_HOST=0.0.0.0 usage"
+fi
+
+# Test: docker-compose.relay.yml passes RELAY_HOST to container environment
+if grep -q 'RELAY_HOST.*environment\|environment:' "$PROJECT_ROOT/docker-compose.relay.yml" && \
+   grep -q 'RELAY_HOST' "$PROJECT_ROOT/docker-compose.relay.yml"; then
+    pass "docker-compose.relay.yml has RELAY_HOST in container environment"
+else
+    fail "docker-compose.relay.yml should pass RELAY_HOST to container environment"
 fi
 
 # ============================================
