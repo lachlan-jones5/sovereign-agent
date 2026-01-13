@@ -121,13 +121,15 @@ elif $HAS_BUN; then
     echo "Using Bun..."
     cd relay
     
-    # Check if already running
+    # Check if already running - kill and restart to apply new env vars
     if curl -s "http://localhost:$RELAY_PORT/health" &>/dev/null; then
-        echo "Relay already running on port $RELAY_PORT"
-    else
-        RELAY_HOST=$RELAY_HOST RELAY_PORT=$RELAY_PORT ./start-relay.sh daemon
-        sleep 2
+        echo "Relay already running on port $RELAY_PORT - restarting with new config..."
+        pkill -f 'bun.*main.ts' 2>/dev/null || true
+        sleep 1
     fi
+    
+    RELAY_HOST=$RELAY_HOST RELAY_PORT=$RELAY_PORT ./start-relay.sh daemon
+    sleep 2
     
     echo ""
     echo "Relay started! Check status:"

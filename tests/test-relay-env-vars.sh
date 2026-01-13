@@ -175,6 +175,20 @@ else
     fail "setup-relay.sh should pass RELAY_HOST to docker compose"
 fi
 
+# Test: setup-relay.sh kills existing relay before restarting
+if grep -q 'pkill.*bun.*main.ts\|kill.*relay' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
+    pass "setup-relay.sh kills existing relay before restarting"
+else
+    fail "setup-relay.sh should kill existing relay before restarting with new config"
+fi
+
+# Test: setup-relay.sh always starts relay (not conditional on not running)
+if grep -q 'RELAY_HOST=.*start-relay.sh daemon' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
+    pass "setup-relay.sh always restarts relay to apply new config"
+else
+    fail "setup-relay.sh should always restart relay to apply new env vars"
+fi
+
 # ============================================
 # Integration: Environment variable flow
 # ============================================
