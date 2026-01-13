@@ -7,7 +7,7 @@
 #   docker build -f Dockerfile.relay -t sovereign-relay .
 #   docker run -d -p 127.0.0.1:8080:8080 -v ./config.json:/app/config.json:ro sovereign-relay
 #
-# The image is ~100MB compared to ~500MB for the full agent.
+# The image includes the full repo for the /bundle.tar.gz endpoint to serve to clients.
 
 FROM oven/bun:1.1-alpine
 
@@ -15,19 +15,22 @@ LABEL org.opencontainers.image.title="Sovereign Agent Relay"
 LABEL org.opencontainers.image.description="API relay for Sovereign Agent"
 LABEL org.opencontainers.image.source="https://github.com/lachlan-jones5/sovereign-agent"
 
-# Install curl for health checks
-RUN apk add --no-cache curl
+# Install curl for health checks and git for submodule updates
+RUN apk add --no-cache curl git
 
 WORKDIR /app
 
-# Copy relay source and create minimal package.json
-COPY relay/main.ts ./relay/
+# Copy full repo (needed for /bundle.tar.gz endpoint)
+COPY . .
+
+# Create minimal package.json for relay
 RUN echo '{"name":"sovereign-relay","type":"module"}' > ./relay/package.json
 
 WORKDIR /app/relay
 
 # Default environment
 ENV CONFIG_PATH=/app/config.json
+ENV REPO_PATH=/app
 ENV RELAY_PORT=8080
 ENV RELAY_HOST=0.0.0.0
 ENV LOG_LEVEL=info

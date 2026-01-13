@@ -485,6 +485,54 @@ fi
 
 echo
 echo "========================================="
+echo "Dockerfile.relay Tests"
+echo "========================================="
+echo
+
+# Test 54: Dockerfile.relay copies full repo for bundle endpoint
+if grep -q 'COPY \. \.\|COPY \.\/' "$PROJECT_DIR/Dockerfile.relay"; then
+    pass "Dockerfile.relay copies full repo for bundle endpoint"
+else
+    fail "Dockerfile.relay should copy full repo (COPY . .) for bundle endpoint"
+fi
+
+# Test 55: Dockerfile.relay sets REPO_PATH env var
+if grep -q 'ENV REPO_PATH' "$PROJECT_DIR/Dockerfile.relay"; then
+    pass "Dockerfile.relay sets REPO_PATH env var"
+else
+    fail "Dockerfile.relay should set REPO_PATH env var"
+fi
+
+# Test 56: Dockerfile.relay installs git for submodule updates
+if grep -q 'apk.*git\|apt.*git' "$PROJECT_DIR/Dockerfile.relay"; then
+    pass "Dockerfile.relay installs git"
+else
+    fail "Dockerfile.relay should install git for submodule updates"
+fi
+
+# Test 57: Bundle endpoint uses REPO_PATH
+if grep -q 'REPO_PATH.*resolve\|exec.*REPO_PATH' "$PROJECT_DIR/relay/main.ts"; then
+    pass "Bundle endpoint uses REPO_PATH for tar command"
+else
+    fail "Bundle endpoint should use REPO_PATH"
+fi
+
+# Test 58: Bundle endpoint excludes .git directories
+if grep -q "exclude.*\.git\|--exclude='.git'" "$PROJECT_DIR/relay/main.ts"; then
+    pass "Bundle endpoint excludes .git directories"
+else
+    fail "Bundle endpoint should exclude .git directories"
+fi
+
+# Test 59: Bundle endpoint excludes config.json (contains API key)
+if grep -q "exclude.*config.json\|--exclude='config.json'" "$PROJECT_DIR/relay/main.ts"; then
+    pass "Bundle endpoint excludes config.json"
+else
+    fail "Bundle endpoint should exclude config.json"
+fi
+
+echo
+echo "========================================="
 echo "Relay Test Results"
 echo "========================================="
 echo "Total: $TESTS_RUN | ${GREEN}Passed: $TESTS_PASSED${NC} | ${RED}Failed: $TESTS_FAILED${NC}"
