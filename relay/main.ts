@@ -54,27 +54,34 @@ async function exec(command: string, cwd?: string): Promise<{ stdout: string; st
   });
 }
 
-// Helper to run shell commands and get output as buffer
-async function execBuffer(command: string, cwd?: string): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const proc = spawn("sh", ["-c", command], { 
-      cwd: cwd || process.cwd(),
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    
-    const chunks: Buffer[] = [];
-    
-    proc.stdout?.on("data", (data) => { chunks.push(Buffer.from(data)); });
-    
-    proc.on("close", (code) => {
-      if (code === 0) {
-        resolve(Buffer.concat(chunks));
-      } else {
-        reject(new Error(`Command failed with exit code ${code}`));
-      }
-    });
-    
-    proc.on("error", reject);
+// Helper to run shell commands and get output as a readable stream
+function execStream(command: string, cwd?: string): ReadableStream<Uint8Array> {
+  const proc = spawn("sh", ["-c", command], { 
+    cwd: cwd || process.cwd(),
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  
+  return new ReadableStream({
+    start(controller) {
+      proc.stdout?.on("data", (data) => {
+        controller.enqueue(new Uint8Array(data));
+      });
+      
+      proc.stdout?.on("end", () => {
+        controller.close();
+      });
+      
+      proc.on("error", (err) => {
+        controller.error(err);
+      });
+      
+      proc.stderr?.on("data", (data) => {
+        log("debug", `tar stderr: ${data.toString()}`);
+      });
+    },
+    cancel() {
+      proc.kill();
+    }
   });
 }
 
@@ -282,12 +289,24 @@ echo "Downloading sovereign-agent bundle..."
 mkdir -p "\$INSTALL_DIR"
 cd "\$INSTALL_DIR"
 
-if ! curl -sf "http://localhost:\$RELAY_PORT/bundle.tar.gz" | tar -xzf -; then
-    echo "Error: Bundle download/extraction failed"
-    echo "Try running manually:"
-    echo "  curl -sf http://localhost:\$RELAY_PORT/bundle.tar.gz | tar -xzvf -"
+# Use curl with progress bar (-#) and save to temp file first to avoid partial extraction
+BUNDLE_TMP="\$(mktemp)"
+if ! curl -# -f "http://localhost:\$RELAY_PORT/bundle.tar.gz" -o "\$BUNDLE_TMP"; then
+    rm -f "\$BUNDLE_TMP"
+    echo "Error: Bundle download failed"
     exit 1
 fi
+
+echo "Extracting bundle..."
+if ! tar -xzf "\$BUNDLE_TMP"; then
+    rm -f "\$BUNDLE_TMP"
+    echo "Error: Bundle extraction failed"
+    echo "Try running manually:"
+    echo "  curl -# http://localhost:\$RELAY_PORT/bundle.tar.gz -o /tmp/bundle.tar.gz"
+    echo "  tar -xzvf /tmp/bundle.tar.gz"
+    exit 1
+fi
+rm -f "\$BUNDLE_TMP"
 
 # Create client config
 if [[ ! -f config.json ]]; then
@@ -344,9 +363,9 @@ echo ""
       });
     }
 
-    // Bundle endpoint - creates fresh tarball of repo on demand
+    // Bundle endpoint - creates fresh tarball of repo on demand (streamed)
     if (path === "/bundle.tar.gz") {
-      log("info", "Generating fresh bundle...");
+      log("info", "Generating fresh bundle (streaming)...");
       log("info", `REPO_PATH: ${REPO_PATH}`);
       
       try {
@@ -358,28 +377,31 @@ echo ""
         const checkResult = await exec("ls -la install.sh lib/ relay/ vendor/ 2>&1 || echo 'MISSING FILES'", REPO_PATH);
         log("info", `File check: ${checkResult.stdout.substring(0, 200)}`);
         
-        // Create tarball excluding .git dirs, config.json (has API key), and large unnecessary files
-        const tarball = await execBuffer(
+        // Get approximate size first (for progress indicator)
+        const sizeResult = await exec(
+          `tar -czf - --exclude='.git' --exclude='config.json' --exclude='node_modules' --exclude='.env' --exclude='*.log' --exclude='tests' . 2>/dev/null | wc -c`,
+          REPO_PATH
+        );
+        const estimatedSize = parseInt(sizeResult.stdout.trim()) || 0;
+        log("info", `Estimated bundle size: ${(estimatedSize / 1024 / 1024).toFixed(2)} MB`);
+        
+        // Stream tarball directly - avoids buffering the whole thing in memory
+        const tarStream = execStream(
           `tar -czf - --exclude='.git' --exclude='config.json' --exclude='node_modules' --exclude='.env' --exclude='*.log' --exclude='tests' .`,
           REPO_PATH
         );
         
-        if (tarball.length === 0) {
-          log("error", "Tarball is empty - REPO_PATH may be incorrect or files missing");
-          return new Response(
-            JSON.stringify({ error: "Bundle is empty", repo_path: REPO_PATH }),
-            { status: 500, headers: { "Content-Type": "application/json" } }
-          );
+        const headers: Record<string, string> = {
+          "Content-Type": "application/gzip",
+          "Content-Disposition": "attachment; filename=sovereign-agent.tar.gz",
+        };
+        
+        // Add Content-Length if we got a size estimate (enables curl progress bar)
+        if (estimatedSize > 0) {
+          headers["Content-Length"] = String(estimatedSize);
         }
         
-        log("info", `Bundle created: ${(tarball.length / 1024 / 1024).toFixed(2)} MB`);
-        
-        return new Response(tarball, {
-          headers: {
-            "Content-Type": "application/gzip",
-            "Content-Disposition": "attachment; filename=sovereign-agent.tar.gz",
-          },
-        });
+        return new Response(tarStream, { headers });
       } catch (err) {
         log("error", `Failed to create bundle: ${err}`);
         return new Response(
