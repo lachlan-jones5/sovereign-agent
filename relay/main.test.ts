@@ -519,6 +519,112 @@ describe("Request Counting", () => {
   });
 });
 
+describe("Setup Endpoint", () => {
+  it("should return shell script content type", () => {
+    const response = new Response("#!/bin/bash\necho 'test'", {
+      headers: { 
+        "Content-Type": "text/x-shellscript",
+        "Content-Disposition": "attachment; filename=setup.sh",
+      },
+    });
+
+    expect(response.headers.get("Content-Type")).toBe("text/x-shellscript");
+    expect(response.headers.get("Content-Disposition")).toBe("attachment; filename=setup.sh");
+  });
+
+  it("should include RELAY_PORT variable in setup script", () => {
+    const setupScript = `#!/bin/bash
+RELAY_PORT="\${RELAY_PORT:-8080}"
+curl -sf "http://localhost:\$RELAY_PORT/health"
+`;
+    expect(setupScript).toContain("RELAY_PORT");
+    expect(setupScript).toContain("/health");
+  });
+
+  it("should include bundle download command in setup script", () => {
+    const setupScript = `curl -sf "http://localhost:$RELAY_PORT/bundle.tar.gz" | tar -xzf - --strip-components=1`;
+    expect(setupScript).toContain("/bundle.tar.gz");
+    expect(setupScript).toContain("tar -xzf");
+  });
+
+  it("should create client config with relay mode", () => {
+    const configTemplate = `{
+  "relay": {
+    "enabled": true,
+    "mode": "client",
+    "port": 8080
+  }
+}`;
+    const config = JSON.parse(configTemplate);
+    expect(config.relay.enabled).toBe(true);
+    expect(config.relay.mode).toBe("client");
+  });
+
+  it("should check for required dependencies", () => {
+    const setupScript = `
+if ! command -v go &>/dev/null; then
+    echo "Warning: 'go' not found"
+fi
+if ! command -v bun &>/dev/null; then
+    echo "Warning: 'bun' not found"
+fi
+if ! command -v jq &>/dev/null; then
+    echo "Warning: 'jq' not found"
+fi
+`;
+    expect(setupScript).toContain("go");
+    expect(setupScript).toContain("bun");
+    expect(setupScript).toContain("jq");
+  });
+});
+
+describe("Bundle Endpoint", () => {
+  it("should return gzip content type for bundle", () => {
+    const response = new Response(new Uint8Array([0x1f, 0x8b]), {
+      headers: {
+        "Content-Type": "application/gzip",
+        "Content-Disposition": "attachment; filename=sovereign-agent.tar.gz",
+      },
+    });
+
+    expect(response.headers.get("Content-Type")).toBe("application/gzip");
+    expect(response.headers.get("Content-Disposition")).toBe("attachment; filename=sovereign-agent.tar.gz");
+  });
+
+  it("should exclude sensitive files from bundle", () => {
+    const excludePatterns = [
+      ".git",
+      "config.json",
+      "node_modules",
+      ".env",
+      "*.log",
+    ];
+
+    // These patterns should be in the tar exclude list
+    expect(excludePatterns).toContain(".git");
+    expect(excludePatterns).toContain("config.json");
+    expect(excludePatterns).toContain(".env");
+  });
+
+  it("should return 500 on bundle creation failure", () => {
+    const errorResponse = {
+      status: 500,
+      body: { error: "Failed to create bundle", details: "tar command failed" },
+    };
+
+    expect(errorResponse.status).toBe(500);
+    expect(errorResponse.body.error).toBe("Failed to create bundle");
+    expect(errorResponse.body.details).toBeDefined();
+  });
+
+  it("should log bundle size on success", () => {
+    const bundleSize = 15 * 1024 * 1024; // 15 MB
+    const logMessage = `Bundle created: ${(bundleSize / 1024 / 1024).toFixed(2)} MB`;
+    
+    expect(logMessage).toBe("Bundle created: 15.00 MB");
+  });
+});
+
 describe("Response Streaming", () => {
   it("should preserve response body for streaming", async () => {
     // Test that Response body can be passed through

@@ -211,6 +211,96 @@ else
     fail "tunnel.sh should have ServerAliveInterval"
 fi
 
+# Test: Script has ExitOnForwardFailure for safety
+if grep -q 'ExitOnForwardFailure' "$PROJECT_ROOT/scripts/tunnel.sh"; then
+    pass "tunnel.sh has ExitOnForwardFailure option"
+else
+    fail "tunnel.sh should have ExitOnForwardFailure"
+fi
+
+# Test: Script checks relay health before starting
+if grep -q 'health\|curl.*RELAY' "$PROJECT_ROOT/scripts/tunnel.sh"; then
+    pass "tunnel.sh checks relay health"
+else
+    fail "tunnel.sh should check relay health"
+fi
+
+# ============================================
+# Additional edge case tests
+# ============================================
+echo ""
+echo "--- Additional Edge Cases ---"
+
+# Test: setup-relay.sh uses set -e for error handling
+if grep -q 'set -e\|set -.*e' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
+    pass "setup-relay.sh uses set -e for error handling"
+else
+    fail "setup-relay.sh should use set -e"
+fi
+
+# Test: setup-client.sh uses set -e for error handling
+if grep -q 'set -e\|set -.*e' "$PROJECT_ROOT/scripts/setup-client.sh"; then
+    pass "setup-client.sh uses set -e for error handling"
+else
+    fail "setup-client.sh should use set -e"
+fi
+
+# Test: tunnel.sh uses set -e for error handling
+if grep -q 'set -e\|set -.*e' "$PROJECT_ROOT/scripts/tunnel.sh"; then
+    pass "tunnel.sh uses set -e for error handling"
+else
+    fail "tunnel.sh should use set -e"
+fi
+
+# Test: setup-relay.sh has default port 8080
+if grep -q 'RELAY_PORT:-8080\|RELAY_PORT.*8080' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
+    pass "setup-relay.sh has default port 8080"
+else
+    fail "setup-relay.sh should have default port 8080"
+fi
+
+# Test: setup-client.sh has default port 8080
+if grep -q 'RELAY_PORT:-8080\|RELAY_PORT.*8080' "$PROJECT_ROOT/scripts/setup-client.sh"; then
+    pass "setup-client.sh has default port 8080"
+else
+    fail "setup-client.sh should have default port 8080"
+fi
+
+# Test: tunnel.sh has default port 8080
+if grep -q 'RELAY_PORT:-8080\|RELAY_PORT.*8080' "$PROJECT_ROOT/scripts/tunnel.sh"; then
+    pass "tunnel.sh has default port 8080"
+else
+    fail "tunnel.sh should have default port 8080"
+fi
+
+# Test: setup-client.sh uses shallow submodules for faster clone
+if grep -q 'shallow-submodules' "$PROJECT_ROOT/scripts/setup-client.sh"; then
+    pass "setup-client.sh uses shallow submodules"
+else
+    fail "setup-client.sh should use shallow submodules"
+fi
+
+# Test: setup-relay.sh clones from correct repo URL
+if grep -q 'github.com.*sovereign-agent\|lachlan-jones5/sovereign-agent' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
+    pass "setup-relay.sh clones from correct repo URL"
+else
+    fail "setup-relay.sh should clone from sovereign-agent repo"
+fi
+
+# Test: setup-client.sh clones from correct repo URL
+if grep -q 'github.com.*sovereign-agent\|lachlan-jones5/sovereign-agent' "$PROJECT_ROOT/scripts/setup-client.sh"; then
+    pass "setup-client.sh clones from correct repo URL"
+else
+    fail "setup-client.sh should clone from sovereign-agent repo"
+fi
+
+# Test: setup-relay.sh validates API key is not empty
+if grep -q 'API_KEY.*-z\|-z.*API_KEY\|if.*-z.*api_key\|api_key.*empty\|if \[\[ -z' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
+    pass "setup-relay.sh validates API key is not empty"
+else
+    fail "setup-relay.sh should validate API key is not empty"
+fi
+
 # ============================================
 # Summary
 # ============================================

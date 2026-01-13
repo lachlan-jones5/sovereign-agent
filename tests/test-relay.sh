@@ -293,6 +293,69 @@ else
     fail "main.ts has stats endpoint"
 fi
 
+# Test 27: main.ts has setup endpoint
+if grep -q '/setup' "$PROJECT_DIR/relay/main.ts"; then
+    pass "main.ts has setup endpoint"
+else
+    fail "main.ts has setup endpoint"
+fi
+
+# Test 28: main.ts has bundle endpoint
+if grep -q '/bundle.tar.gz' "$PROJECT_DIR/relay/main.ts"; then
+    pass "main.ts has bundle endpoint"
+else
+    fail "main.ts has bundle endpoint"
+fi
+
+# Test 29: setup endpoint returns shell script content type
+if grep -q 'text/x-shellscript' "$PROJECT_DIR/relay/main.ts"; then
+    pass "setup endpoint returns shell script content type"
+else
+    fail "setup endpoint returns shell script content type"
+fi
+
+# Test 30: bundle endpoint returns gzip content type
+if grep -q 'application/gzip' "$PROJECT_DIR/relay/main.ts"; then
+    pass "bundle endpoint returns gzip content type"
+else
+    fail "bundle endpoint returns gzip content type"
+fi
+
+# Test 31: bundle excludes config.json (contains API key)
+if grep -q "exclude.*config.json\|--exclude='config.json'" "$PROJECT_DIR/relay/main.ts"; then
+    pass "bundle excludes config.json"
+else
+    fail "bundle excludes config.json"
+fi
+
+# Test 32: bundle excludes .git directories
+if grep -q "exclude.*\.git\|--exclude='.git'" "$PROJECT_DIR/relay/main.ts"; then
+    pass "bundle excludes .git directories"
+else
+    fail "bundle excludes .git directories"
+fi
+
+# Test 33: bundle excludes .env files
+if grep -q "exclude.*\.env\|--exclude='.env'" "$PROJECT_DIR/relay/main.ts"; then
+    pass "bundle excludes .env files"
+else
+    fail "bundle excludes .env files"
+fi
+
+# Test 34: setup script checks relay health
+if grep -q 'localhost.*RELAY_PORT.*health\|localhost:\$RELAY_PORT/health' "$PROJECT_DIR/relay/main.ts"; then
+    pass "setup script checks relay health"
+else
+    fail "setup script checks relay health"
+fi
+
+# Test 35: setup script downloads bundle
+if grep -q 'bundle.tar.gz' "$PROJECT_DIR/relay/main.ts"; then
+    pass "setup script downloads bundle"
+else
+    fail "setup script downloads bundle"
+fi
+
 echo
 echo "========================================="
 echo "Relay Test Results"
