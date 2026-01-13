@@ -1,5 +1,5 @@
 #!/bin/bash
-# setup-client.sh - Minimal OpenCode client setup for Work VM
+# setup-client.sh - Full client setup for Work VM
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/lachlan-jones5/sovereign-agent/master/scripts/setup-client.sh | bash
@@ -8,82 +8,85 @@
 #   curl -fsSL ... | RELAY_PORT=8081 bash
 #
 # This script:
-#   1. Installs OpenCode if not present
-#   2. Configures it to use localhost:8080 (the relay tunnel)
-#   3. That's it!
+#   1. Clones sovereign-agent with all submodules
+#   2. Creates client config (points to localhost relay)
+#   3. Runs install.sh to set up OpenCode with agents/plugins
 
 set -euo pipefail
 
 RELAY_PORT="${RELAY_PORT:-8080}"
-CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"
+INSTALL_DIR="${INSTALL_DIR:-$HOME/sovereign-agent}"
 
 echo "=== Sovereign Agent Client Setup ==="
 echo ""
 
-# Check if OpenCode is installed
-if command -v opencode &>/dev/null; then
-    echo "OpenCode is already installed: $(which opencode)"
-else
-    echo "OpenCode not found. Installing..."
-    
-    # Check for Go
-    if ! command -v go &>/dev/null; then
-        echo "Error: Go is required to install OpenCode"
-        echo "Install Go: https://go.dev/doc/install"
+# Check for required tools
+for cmd in git go jq; do
+    if ! command -v "$cmd" &>/dev/null; then
+        echo "Error: '$cmd' is required but not installed"
         exit 1
     fi
-    
-    echo "Installing OpenCode via 'go install'..."
-    go install github.com/sst/opencode@latest
-    
-    # Check if it worked
-    if ! command -v opencode &>/dev/null; then
-        echo ""
-        echo "OpenCode installed but not in PATH."
-        echo "Add this to your shell config:"
-        echo '  export PATH="$PATH:$(go env GOPATH)/bin"'
-        echo ""
-    fi
+done
+
+# Check for Bun (needed for oh-my-opencode)
+if ! command -v bun &>/dev/null; then
+    echo "Bun not found. Installing..."
+    curl -fsSL https://bun.sh/install | bash
+    export PATH="$HOME/.bun/bin:$PATH"
 fi
 
-# Create config directory
-mkdir -p "$CONFIG_DIR"
-
-# Create or update config
-CONFIG_FILE="$CONFIG_DIR/config.json"
-
-if [[ -f "$CONFIG_FILE" ]]; then
-    echo ""
-    echo "Config already exists at $CONFIG_FILE"
-    echo "Checking if relay is configured..."
-    
-    if grep -q "localhost:$RELAY_PORT" "$CONFIG_FILE"; then
-        echo "Already configured for relay on port $RELAY_PORT"
-    else
-        echo ""
-        echo "WARNING: Existing config may not be set up for relay."
-        echo "Ensure your config has:"
-        echo ""
-        echo '  "provider": {'
-        echo '    "openrouter": {'
-        echo "      \"baseURL\": \"http://localhost:$RELAY_PORT/api/v1\""
-        echo '    }'
-        echo '  }'
-    fi
+# Clone repo if not already present
+if [[ -d "$INSTALL_DIR" ]]; then
+    echo "Directory $INSTALL_DIR already exists"
+    cd "$INSTALL_DIR"
+    echo "Pulling latest changes..."
+    git pull --quiet
+    git submodule update --init --recursive --depth 1
 else
-    echo "Creating OpenCode config..."
-    
-    cat > "$CONFIG_FILE" <<EOF
+    echo "Cloning sovereign-agent (this may take a minute)..."
+    git clone --recurse-submodules --shallow-submodules \
+        https://github.com/lachlan-jones5/sovereign-agent.git "$INSTALL_DIR"
+    cd "$INSTALL_DIR"
+fi
+
+# Create client config if not exists
+if [[ -f config.json ]]; then
+    echo "config.json already exists"
+else
+    echo "Creating client config..."
+    cat > config.json <<EOF
 {
-  "provider": {
-    "openrouter": {
-      "baseURL": "http://localhost:$RELAY_PORT/api/v1"
-    }
+  "openrouter_api_key": "",
+  "site_url": "https://github.com/lachlan-jones5/sovereign-agent",
+  "site_name": "SovereignAgent",
+
+  "models": {
+    "orchestrator": "deepseek/deepseek-r1",
+    "planner": "anthropic/claude-sonnet-4",
+    "librarian": "google/gemini-2.5-flash",
+    "fallback": "meta-llama/llama-3.3-70b-instruct"
+  },
+
+  "preferences": {
+    "ultrawork_max_iterations": 50,
+    "dcp_turn_protection": 2,
+    "dcp_error_retention_turns": 4,
+    "dcp_nudge_frequency": 10
+  },
+
+  "relay": {
+    "enabled": true,
+    "mode": "client",
+    "port": $RELAY_PORT
   }
 }
 EOF
-    echo "Created $CONFIG_FILE"
 fi
+
+# Run install
+echo ""
+echo "Running install.sh..."
+./install.sh
 
 echo ""
 echo "=== Setup Complete ==="
