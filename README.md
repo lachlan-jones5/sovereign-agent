@@ -548,6 +548,38 @@ rm -f /tmp/sovereign-ssh-tunnel.*
 docker compose run --rm -v ~/.ssh:/root/.ssh:ro agent ./lib/ssh-relay.sh run pi-relay
 ```
 
+### Port Already in Use
+
+**Symptom**: `Bind for 127.0.0.1:8080 failed: port is already allocated`
+
+Something else is using port 8080. First, find what's using it:
+
+```bash
+sudo lsof -i :8080
+# or
+sudo ss -tlnp | grep 8080
+```
+
+Then either stop the conflicting service, or use a different port:
+
+```bash
+# Stop and remove any existing relay container
+docker compose -f docker-compose.relay.yml down
+
+# Start with a different port (e.g., 8081)
+RELAY_PORT=8081 docker compose -f docker-compose.relay.yml up -d
+
+# Verify it's running
+curl http://localhost:8081/health
+```
+
+Remember to use the new port when connecting from the client:
+
+```bash
+# On client, forward to the new port
+ssh -L 8081:localhost:8081 pi-relay
+```
+
 ---
 
 ## Testing
