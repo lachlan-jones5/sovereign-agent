@@ -28,10 +28,11 @@ services:
     container_name: sovereign-relay
     restart: unless-stopped
     
-    # Port mapping - change RELAY_PORT to use a different port
-    # Example: RELAY_PORT=8081 docker compose -f docker-compose.relay.yml up -d
+    # Port mapping - change RELAY_PORT/RELAY_HOST to customize binding
+    # Example: RELAY_HOST=0.0.0.0 RELAY_PORT=8081 docker compose -f docker-compose.relay.yml up -d
+    # Default binds to 127.0.0.1 (localhost only) for security
     ports:
-      - "127.0.0.1:${RELAY_PORT:-8080}:${RELAY_PORT:-8080}"
+      - "${RELAY_HOST:-127.0.0.1}:${RELAY_PORT:-8080}:${RELAY_PORT:-8080}"
     
     # Mount config file (read-only)
     volumes:
