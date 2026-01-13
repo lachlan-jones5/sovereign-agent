@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # check-deps.sh - Verify and install required dependencies
 
-set -e
+# Only set -e when run directly, not when sourced
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    set -e
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
