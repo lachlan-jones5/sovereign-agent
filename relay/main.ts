@@ -28,7 +28,55 @@
 
 import { existsSync, readFileSync } from "fs";
 import { resolve, dirname } from "path";
-import { $ } from "bun";
+import { spawn } from "child_process";
+
+// Helper to run shell commands (compatible with older Bun versions on arm64)
+async function exec(command: string, cwd?: string): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  return new Promise((resolve) => {
+    const proc = spawn("sh", ["-c", command], { 
+      cwd: cwd || process.cwd(),
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    
+    let stdout = "";
+    let stderr = "";
+    
+    proc.stdout?.on("data", (data) => { stdout += data.toString(); });
+    proc.stderr?.on("data", (data) => { stderr += data.toString(); });
+    
+    proc.on("close", (code) => {
+      resolve({ stdout, stderr, exitCode: code ?? 0 });
+    });
+    
+    proc.on("error", (err) => {
+      resolve({ stdout: "", stderr: err.message, exitCode: 1 });
+    });
+  });
+}
+
+// Helper to run shell commands and get output as buffer
+async function execBuffer(command: string, cwd?: string): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn("sh", ["-c", command], { 
+      cwd: cwd || process.cwd(),
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    
+    const chunks: Buffer[] = [];
+    
+    proc.stdout?.on("data", (data) => { chunks.push(Buffer.from(data)); });
+    
+    proc.on("close", (code) => {
+      if (code === 0) {
+        resolve(Buffer.concat(chunks));
+      } else {
+        reject(new Error(`Command failed with exit code ${code}`));
+      }
+    });
+    
+    proc.on("error", reject);
+  });
+}
 
 // Configuration
 const CONFIG_PATH = process.env.CONFIG_PATH || resolve(import.meta.dir, "../config.json");
@@ -244,20 +292,17 @@ echo ""
       log("info", "Generating fresh bundle...");
       
       try {
-        // Pull latest and update submodules
-        await $\`cd \${REPO_PATH} && git pull --quiet 2>/dev/null || true\`;
-        await $\`cd \${REPO_PATH} && git submodule update --init --recursive --depth 1 2>/dev/null || true\`;
+        // Pull latest and update submodules (ignore failures - may not be a git repo or offline)
+        await exec("git pull --quiet 2>/dev/null || true", REPO_PATH);
+        await exec("git submodule update --init --recursive --depth 1 2>/dev/null || true", REPO_PATH);
         
         // Create tarball excluding .git dirs, config.json (has API key), and large unnecessary files
-        const tarball = await $\`cd \${REPO_PATH} && tar -czf - \\
-          --exclude='.git' \\
-          --exclude='config.json' \\
-          --exclude='node_modules' \\
-          --exclude='.env' \\
-          --exclude='*.log' \\
-          .\`.blob();
+        const tarball = await execBuffer(
+          `tar -czf - --exclude='.git' --exclude='config.json' --exclude='node_modules' --exclude='.env' --exclude='*.log' .`,
+          REPO_PATH
+        );
         
-        log("info", \`Bundle created: \${(tarball.size / 1024 / 1024).toFixed(2)} MB\`);
+        log("info", `Bundle created: ${(tarball.length / 1024 / 1024).toFixed(2)} MB`);
         
         return new Response(tarball, {
           headers: {
@@ -266,7 +311,7 @@ echo ""
           },
         });
       } catch (err) {
-        log("error", \`Failed to create bundle: \${err}\`);
+        log("error", `Failed to create bundle: ${err}`);
         return new Response(
           JSON.stringify({ error: "Failed to create bundle", details: String(err) }),
           {
