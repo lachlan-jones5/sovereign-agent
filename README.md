@@ -4,149 +4,141 @@ Privacy-compliant agentic software engineering environment combining [OpenCode](
 
 ## Overview
 
-Sovereign Agent uses a **client-server relay architecture** to keep your API keys secure on a trusted machine while running OpenCode on any workstation. This is ideal for:
+Sovereign Agent uses a **relay server** to keep your API keys secure on a trusted machine while running OpenCode on any workstation (like a work VM). This is ideal for:
 
 - **Remote work**: Run AI coding on a work VM while keeping keys on your personal device
 - **Network isolation**: Route API traffic through a trusted server to avoid monitoring
 - **Team deployments**: Centralized API key management with per-user access control
 
 ```
-┌─────────────────┐     ┌──────────────┐     ┌─────────────────┐     ┌────────────┐
-│   Work VM       │     │   Laptop     │     │   Pi/Server     │     │ OpenRouter │
-│   (client)      │────▶│   (jump)     │────▶│   (relay)       │────▶│   API      │
-│   OpenCode      │ SSH │   optional   │ SSH │   API keys here │HTTPS│   ZDR mode │
-└─────────────────┘     └──────────────┘     └─────────────────┘     └────────────┘
+┌──────────────┐                      ┌──────────────┐         ┌────────────┐
+│   Work VM    │◀── reverse tunnel ──│   Laptop     │────────▶│   Pi/VPS   │
+│   OpenCode   │     (from laptop)   │   (bridge)   │  SSH    │   relay    │
+│   :8080      │                     │              │         │   :8080    │
+└──────────────┘                     └──────────────┘         └────────────┘
+                                                                    │
+                                                               HTTPS│ZDR
+                                                                    ▼
+                                                              ┌────────────┐
+                                                              │ OpenRouter │
+                                                              │    API     │
+                                                              └────────────┘
 ```
+
+**Key insight**: Your laptop can SSH to both machines, so it acts as a bridge using a **reverse tunnel**. No SSH keys or sovereign-agent setup needed on the Work VM.
 
 ## Quick Start
 
 ### Step 1: Set Up the Relay Server
 
-The relay server only needs the core repo (no submodules required). Choose **one** method:
-
-#### Option A: Docker (Recommended)
+On your trusted machine (Pi, home server, VPS), clone and start the relay:
 
 ```bash
 git clone https://github.com/lachlan-jones5/sovereign-agent.git
 cd sovereign-agent
 
-# Create server config with your API key
 cp config.json.example config.json
-# Edit config.json: add your openrouter_api_key, set relay.enabled=true, relay.mode=server
+# Edit config.json: add your openrouter_api_key
 
-# Start the relay server
-docker compose -f docker-compose.relay.yml up -d
+# Start the relay (choose one)
+docker compose -f docker-compose.relay.yml up -d   # Docker
+# OR
+cd relay && ./start-relay.sh daemon                 # Native (requires Bun)
 ```
 
-#### Option B: Native (Bun)
+Verify it's running:
+```bash
+curl http://localhost:8080/health
+# {"status":"ok"}
+```
+
+### Step 2: Create a Reverse Tunnel from Your Laptop
+
+Your laptop bridges the Work VM and the relay server. Run this **on your laptop**:
 
 ```bash
-git clone https://github.com/lachlan-jones5/sovereign-agent.git
-cd sovereign-agent
-
-# Create server config
-cp config.json.example config.json
-# Edit config.json: add your openrouter_api_key, set relay.enabled=true, relay.mode=server
-
-# Start the relay
-cd relay
-./start-relay.sh daemon
+ssh -R 8080:pi-hostname:8080 workvm -N
 ```
 
-### Step 2: Set Up the Client
+Replace:
+- `pi-hostname` - hostname/IP of your relay server (as reachable from your laptop)
+- `workvm` - your Work VM's SSH host
 
-The client needs the full repo with submodules to run OpenCode. Choose **one** method:
+**What this does:**
+- `-R 8080:pi-hostname:8080` - Makes port 8080 on the Work VM forward through your laptop to the relay
+- `-N` - Just create the tunnel, don't open a shell
 
-#### Option A: Docker
+**Diagram:**
+```
+Work VM :8080 ◀──reverse tunnel──▶ Laptop ──SSH──▶ Pi :8080 (relay)
+     ▲
+     │
+OpenCode talks to localhost:8080
+```
 
+### Step 3: Install OpenCode on the Work VM
+
+On the Work VM, you just need OpenCode configured to use `localhost:8080`. You can either:
+
+**Option A: Use sovereign-agent's installer**
 ```bash
 git clone --recurse-submodules --shallow-submodules https://github.com/lachlan-jones5/sovereign-agent.git
 cd sovereign-agent
-
-# Create client config (no API key needed)
-cp config.client.example config.json
-
-# Start SSH tunnel + OpenCode
-docker compose run --rm agent ./lib/ssh-relay.sh run pi-relay
-```
-
-#### Option B: Native
-
-```bash
-git clone --recurse-submodules --shallow-submodules https://github.com/lachlan-jones5/sovereign-agent.git
-cd sovereign-agent
-
-# Create client config and install
 cp config.client.example config.json
 ./install.sh
-
-# Connect via SSH tunnel and run OpenCode
-./lib/ssh-relay.sh run pi-relay
+opencode
 ```
 
-### Step 3: Configure SSH on the Client
+**Option B: Configure existing OpenCode manually**
 
-The **client machine** (where OpenCode runs) needs to know how to reach the **server** (where the relay runs). Add an SSH config entry on the client.
+Edit your OpenCode config (`~/.config/opencode/config.json`) to point to the relay:
 
-**Example scenario:**
-```
-┌──────────────┐         ┌──────────────┐         ┌──────────────┐
-│   Client     │   SSH   │   Server     │  HTTPS  │  OpenRouter  │
-│   (work VM)  │────────▶│   (razer)    │────────▶│     API      │
-│   OpenCode   │  tunnel │   relay:8080 │         │              │
-└──────────────┘         └──────────────┘         └──────────────┘
-```
-
-**On the client machine**, edit `~/.ssh/config`:
-
-```ssh-config
-# Name this whatever you want - you'll use it in the ssh-relay.sh command
-Host relay-server
-    HostName 192.168.1.50        # IP or hostname of your relay server
-    User lachlan                  # Your username on the relay server
-    IdentityFile ~/.ssh/id_rsa   # Path to your private key (on the client)
-    ServerAliveInterval 30        # Keep connection alive
+```json
+{
+  "provider": {
+    "openrouter": {
+      "baseURL": "http://localhost:8080/api/v1"
+    }
+  }
+}
 ```
 
-Then test the connection from the client:
+### Step 4: Run OpenCode
+
+With the reverse tunnel running (Step 2), just run OpenCode on the Work VM:
 
 ```bash
-# On the client machine
-ssh relay-server              # Should connect to your relay server
-curl localhost:8080/health    # Won't work yet (no tunnel)
+opencode
 ```
 
-Now you can use the SSH host name with the relay script:
+All API requests go through `localhost:8080` → your laptop → relay server → OpenRouter.
+
+---
+
+## Persistent Tunnel Setup
+
+Instead of manually running the SSH command, create a script or use autossh:
+
+**On your laptop**, create `~/bin/relay-tunnel.sh`:
 
 ```bash
-./lib/ssh-relay.sh run relay-server
+#!/bin/bash
+# Tunnel Work VM :8080 to Pi relay :8080
+autossh -M 0 -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" \
+    -R 8080:pi-hostname:8080 workvm -N
 ```
 
-This creates an SSH tunnel that forwards `localhost:8080` on the client to `localhost:8080` on the server.
-
-**Multi-hop example** (client → jump host → relay server):
-
-If the client can't reach the relay directly but can reach an intermediate machine:
-
-```
-┌──────────────┐         ┌──────────────┐         ┌──────────────┐
-│   Client     │   SSH   │  Jump host   │   SSH   │   Server     │
-│   (work VM)  │────────▶│  (bastion)   │────────▶│   (razer)    │
-└──────────────┘         └──────────────┘         └──────────────┘
-```
+Or add to your laptop's `~/.ssh/config`:
 
 ```ssh-config
-# First, define the jump host
-Host jump
-    HostName bastion.company.com
-    User myuser
-
-# Then define the relay server, proxying through the jump host
-Host relay-server
-    HostName 192.168.1.50        # Internal IP of relay (reachable from jump)
-    User lachlan
-    ProxyJump jump                # Connect via the jump host first
+Host workvm-relay
+    HostName workvm-ip-or-hostname
+    User youruser
+    RemoteForward 8080 pi-hostname:8080
+    ServerAliveInterval 30
 ```
+
+Then just: `ssh workvm-relay -N`
 
 ---
 
@@ -264,129 +256,77 @@ tail -f /tmp/sovereign-relay.log
 
 ## Client Setup (Detailed)
 
-The **client** runs OpenCode and connects to the relay server via SSH tunnel. No API key required.
+The **client** (Work VM) runs OpenCode and connects to the relay via a reverse tunnel from your laptop.
 
-### Client Configuration
+### What You Need on the Work VM
 
-Create `config.json` with relay client settings (note: `openrouter_api_key` is empty):
+With the reverse tunnel approach, the Work VM only needs:
+1. OpenCode installed
+2. OpenCode configured to use `localhost:8080` as the API endpoint
 
+**That's it.** No SSH keys to the relay, no sovereign-agent repo (unless you want the installer).
+
+### Installing OpenCode
+
+**Option A: Use sovereign-agent's installer** (recommended)
+
+```bash
+git clone --recurse-submodules --shallow-submodules https://github.com/lachlan-jones5/sovereign-agent.git
+cd sovereign-agent
+cp config.client.example config.json
+./install.sh
+```
+
+**Option B: Install OpenCode directly**
+
+Follow the [OpenCode installation guide](https://github.com/sst/opencode#installation), then configure it to use the relay:
+
+Edit `~/.config/opencode/config.json`:
 ```json
 {
-  "openrouter_api_key": "",
-  "site_url": "https://github.com/lachlan-jones5/sovereign-agent",
-  "site_name": "SovereignAgent",
-
-  "models": {
-    "orchestrator": "deepseek/deepseek-v3",
-    "planner": "anthropic/claude-opus-4.5",
-    "librarian": "google/gemini-3-flash",
-    "fallback": "meta-llama/llama-3.3-70b-instruct"
-  },
-
-  "relay": {
-    "enabled": true,
-    "mode": "client",
-    "port": 8080
+  "provider": {
+    "openrouter": {
+      "baseURL": "http://localhost:8080/api/v1"
+    }
   }
 }
 ```
 
-### Running the Client with Docker
+### Running OpenCode
 
-```bash
-# Interactive session with SSH tunnel
-docker compose run --rm agent ./lib/ssh-relay.sh run pi-relay
+1. Make sure the reverse tunnel is running (from your laptop - see Quick Start Step 2)
+2. Verify the tunnel works:
+   ```bash
+   curl http://localhost:8080/health
+   # Should return: {"status":"ok"}
+   ```
+3. Run OpenCode:
+   ```bash
+   opencode
+   ```
 
-# Or mount a specific project
-docker compose run --rm \
-  -v /path/to/project:/workspace \
-  agent ./lib/ssh-relay.sh run pi-relay
-```
+---
 
-For persistent tunnel (keep tunnel running between sessions):
+## Alternative: Direct SSH Tunnel (Advanced)
 
-```bash
-# Terminal 1: Start tunnel
-docker compose run --rm agent ./lib/ssh-relay.sh start pi-relay
+If the Work VM can directly SSH to the relay server (has network access and SSH keys), you can skip the reverse tunnel and use a direct tunnel instead.
 
-# Terminal 2: Run OpenCode (multiple times)
-docker compose run --rm agent opencode
+**On the Work VM**, add to `~/.ssh/config`:
 
-# When done: Stop tunnel
-docker compose run --rm agent ./lib/ssh-relay.sh stop
-```
-
-### Running the Client Natively
-
-Prerequisites: Go 1.21+, Bun 1.0+, jq
-
-```bash
-# One-time setup
-cp config.client.example config.json
-./install.sh
-
-# Daily usage: start tunnel and run OpenCode
-./lib/ssh-relay.sh run pi-relay
-
-# Or manage tunnel separately
-./lib/ssh-relay.sh start pi-relay    # Start tunnel
-opencode                              # Run OpenCode (multiple times)
-./lib/ssh-relay.sh stop               # Stop tunnel when done
-```
-
-### Client Commands
-
-```bash
-# Start tunnel and run OpenCode
-./lib/ssh-relay.sh run <ssh-host>
-
-# Manage tunnel separately
-./lib/ssh-relay.sh start <ssh-host>   # Start tunnel
-./lib/ssh-relay.sh status             # Check tunnel + relay status
-./lib/ssh-relay.sh stop               # Stop tunnel
-
-# Check if relay is accessible
-curl http://localhost:8080/health
-```
-
-### SSH Tunnel Configuration
-
-The SSH host can be:
-- A host defined in `~/.ssh/config` (recommended)
-- Direct user@hostname connection
-- Multi-hop via ProxyJump
-
-**Direct connection** (client → server):
 ```ssh-config
-Host pi-relay
-    HostName your-pi.duckdns.org
-    User pi
-    Port 22
-    IdentityFile ~/.ssh/pi_key
-    ServerAliveInterval 30
-```
-
-**Two-hop** (client → laptop → server):
-```ssh-config
-Host laptop
-    HostName laptop.local
-    User youruser
-    IdentityFile ~/.ssh/laptop_key
-
-Host pi-relay
+Host relay
     HostName pi.local
     User pi
-    ProxyJump laptop
     IdentityFile ~/.ssh/pi_key
 ```
 
-**Three-hop** (client → bastion → laptop → server):
-```ssh-config
-Host pi-relay
-    HostName pi.local
-    User pi
-    ProxyJump bastion,laptop
+Then use the included tunnel script:
+
+```bash
+./lib/ssh-relay.sh run relay
 ```
+
+This creates a forward tunnel (`-L`) from the Work VM to the relay.
 
 ---
 
