@@ -346,17 +346,30 @@ echo ""
     // Bundle endpoint - creates fresh tarball of repo on demand
     if (path === "/bundle.tar.gz") {
       log("info", "Generating fresh bundle...");
+      log("info", `REPO_PATH: ${REPO_PATH}`);
       
       try {
         // Pull latest and update submodules (ignore failures - may not be a git repo or offline)
         await exec("git pull --quiet 2>/dev/null || true", REPO_PATH);
         await exec("git submodule update --init --recursive --depth 1 2>/dev/null || true", REPO_PATH);
         
+        // Verify essential files exist
+        const checkResult = await exec("ls -la install.sh lib/ relay/ vendor/ 2>&1 || echo 'MISSING FILES'", REPO_PATH);
+        log("info", `File check: ${checkResult.stdout.substring(0, 200)}`);
+        
         // Create tarball excluding .git dirs, config.json (has API key), and large unnecessary files
         const tarball = await execBuffer(
-          `tar -czf - --exclude='.git' --exclude='config.json' --exclude='node_modules' --exclude='.env' --exclude='*.log' .`,
+          `tar -czf - --exclude='.git' --exclude='config.json' --exclude='node_modules' --exclude='.env' --exclude='*.log' --exclude='tests' .`,
           REPO_PATH
         );
+        
+        if (tarball.length === 0) {
+          log("error", "Tarball is empty - REPO_PATH may be incorrect or files missing");
+          return new Response(
+            JSON.stringify({ error: "Bundle is empty", repo_path: REPO_PATH }),
+            { status: 500, headers: { "Content-Type": "application/json" } }
+          );
+        }
         
         log("info", `Bundle created: ${(tarball.length / 1024 / 1024).toFixed(2)} MB`);
         
@@ -369,7 +382,7 @@ echo ""
       } catch (err) {
         log("error", `Failed to create bundle: ${err}`);
         return new Response(
-          JSON.stringify({ error: "Failed to create bundle", details: String(err) }),
+          JSON.stringify({ error: "Failed to create bundle", details: String(err), repo_path: REPO_PATH }),
           {
             status: 500,
             headers: { "Content-Type": "application/json" },
