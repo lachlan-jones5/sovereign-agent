@@ -4,12 +4,15 @@
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/lachlan-jones5/sovereign-agent/master/scripts/setup-relay.sh | bash
 #
+# Or with API key as env var (non-interactive):
+#   curl -fsSL ... | OPENROUTER_API_KEY=sk-or-... bash
+#
 # Or with custom port:
-#   curl -fsSL ... | RELAY_PORT=8081 bash
+#   curl -fsSL ... | RELAY_PORT=8081 OPENROUTER_API_KEY=sk-or-... bash
 #
 # This script:
 #   1. Clones the repo (no submodules - fast)
-#   2. Prompts for your OpenRouter API key
+#   2. Prompts for your OpenRouter API key (or uses env var)
 #   3. Creates config.json
 #   4. Starts the relay
 
@@ -17,6 +20,7 @@ set -euo pipefail
 
 RELAY_PORT="${RELAY_PORT:-8080}"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/sovereign-agent}"
+API_KEY="${OPENROUTER_API_KEY:-}"
 
 echo "=== Sovereign Agent Relay Setup ==="
 echo ""
@@ -60,9 +64,20 @@ fi
 if [[ -f config.json ]] && grep -q '"openrouter_api_key"' config.json; then
     echo "config.json already exists"
 else
-    echo ""
-    echo "Enter your OpenRouter API key (from https://openrouter.ai/keys):"
-    read -r -s API_KEY
+    # If no API key provided, try to read from terminal
+    if [[ -z "$API_KEY" ]]; then
+        echo ""
+        echo "Enter your OpenRouter API key (from https://openrouter.ai/keys):"
+        # Read from /dev/tty to work even when script is piped
+        read -r -s API_KEY < /dev/tty || {
+            echo ""
+            echo "Error: Cannot read API key interactively."
+            echo "Provide it via environment variable instead:"
+            echo ""
+            echo "  curl -fsSL ... | OPENROUTER_API_KEY=sk-or-... bash"
+            exit 1
+        }
+    fi
     
     if [[ -z "$API_KEY" ]]; then
         echo "Error: API key is required"
