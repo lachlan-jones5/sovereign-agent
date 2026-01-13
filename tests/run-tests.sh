@@ -78,6 +78,8 @@ run_test_suite "Error Handling Tests" "$SCRIPT_DIR/test-error-handling.sh"
 run_test_suite "Budget Calculation Tests" "$SCRIPT_DIR/test-budget-calculations.sh"
 run_test_suite "JSON Schema Validation Tests" "$SCRIPT_DIR/test-json-schema.sh"
 run_test_suite "Edge Case Tests" "$SCRIPT_DIR/test-edge-cases.sh"
+run_test_suite "Setup Scripts Tests" "$SCRIPT_DIR/test-setup-scripts.sh"
+run_test_suite "Dockerfile Verification Tests" "$SCRIPT_DIR/test-dockerfile.sh"
 
 # Run TypeScript tests
 run_omo_tests
