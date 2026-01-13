@@ -1,0 +1,64 @@
+# docker-compose.yml - Sovereign Agent
+#
+# Quick start:
+#   1. Copy config.json.example to config.json and add your API key
+#   2. docker compose run --rm agent
+#
+# Usage patterns:
+#   # Start interactive session in current directory
+#   docker compose run --rm agent
+#
+#   # Start with a specific project
+#   docker compose run --rm -v /path/to/project:/workspace agent
+#
+#   # Shell access for debugging
+#   docker compose run --rm agent bash
+#
+#   # Re-run installer (after config changes)
+#   docker compose run --rm agent --install --skip-deps
+
+services:
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sovereign-agent:latest
+    container_name: sovereign-agent
+    
+    # Interactive terminal
+    stdin_open: true
+    tty: true
+    
+    volumes:
+      # Mount current directory as workspace
+      - .:/workspace
+      
+      # Mount config file
+      - ./config.json:/app/config.json:ro
+      
+      # Persist OpenCode configuration between runs
+      - opencode-config:/root/.config/opencode
+      
+      # Persist session history (SQLite database)
+      - opencode-data:/root/.local/share/opencode
+      
+      # Optional: mount SSH keys for git operations
+      # - ~/.ssh:/root/.ssh:ro
+      
+      # Optional: mount git config
+      # - ~/.gitconfig:/root/.gitconfig:ro
+    
+    environment:
+      # Pass through API key if set in environment
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      
+      # Optional: custom config path
+      - CONFIG_PATH=/app/config.json
+    
+    working_dir: /workspace
+
+volumes:
+  opencode-config:
+    name: sovereign-agent-config
+  opencode-data:
+    name: sovereign-agent-data

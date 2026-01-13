@@ -12,14 +12,34 @@ Privacy-compliant agentic software engineering environment combining [OpenCode](
 
 ## Quick Start
 
-### 1. Clone with submodules
+### Option A: Docker (Recommended)
+
+The easiest way to get started:
+
+```bash
+git clone --recursive https://github.com/lachlan-jones5/sovereign-agent.git
+cd sovereign-agent
+
+# Create config with your API key
+cp config.json.example config.json
+# Edit config.json with your OpenRouter API key
+
+# Build and run
+docker compose run --rm agent
+```
+
+See [Docker Usage](#docker-usage) for more options.
+
+### Option B: Native Installation
+
+#### 1. Clone with submodules
 
 ```bash
 git clone --recursive https://github.com/lachlan-jones5/sovereign-agent.git
 cd sovereign-agent
 ```
 
-### 2. Create your configuration
+#### 2. Create your configuration
 
 ```bash
 cp config.json.example config.json
@@ -49,13 +69,13 @@ Edit `config.json` with your OpenRouter API key and model preferences:
 }
 ```
 
-### 3. Run the installer
+#### 3. Run the installer
 
 ```bash
 ./install.sh
 ```
 
-### 4. Start coding
+#### 4. Start coding
 
 ```bash
 cd /path/to/your/project
@@ -161,6 +181,88 @@ All API calls route through OpenRouter with Zero Data Retention (ZDR) enabled:
 
 The `site_url` and `site_name` fields are sent to OpenRouter for attribution but contain no sensitive data.
 
+## Docker Usage
+
+### Building the Image
+
+```bash
+docker build -t sovereign-agent .
+```
+
+Or with docker compose:
+
+```bash
+docker compose build
+```
+
+### Running with Docker Compose (Recommended)
+
+```bash
+# Interactive session in current directory
+docker compose run --rm agent
+
+# Work on a different project
+docker compose run --rm -v /path/to/project:/workspace agent
+
+# Shell access for debugging
+docker compose run --rm agent bash
+
+# Re-run installer after config changes
+docker compose run --rm agent --install --skip-deps
+```
+
+### Running with Docker Directly
+
+```bash
+# Basic usage - mount project and config
+docker run -it --rm \
+  -v $(pwd):/workspace \
+  -v ./config.json:/app/config.json:ro \
+  sovereign-agent
+
+# With persistent configuration
+docker run -it --rm \
+  -v $(pwd):/workspace \
+  -v ./config.json:/app/config.json:ro \
+  -v sovereign-config:/root/.config/opencode \
+  -v sovereign-data:/root/.local/share/opencode \
+  sovereign-agent
+
+# Shell access
+docker run -it --rm sovereign-agent bash
+```
+
+### Volume Mounts
+
+| Mount | Purpose |
+|-------|---------|
+| `/workspace` | Your project directory (working directory) |
+| `/app/config.json` | Your `config.json` with API key |
+| `/root/.config/opencode` | Generated OpenCode configuration |
+| `/root/.local/share/opencode` | Session history (SQLite) |
+| `/root/.ssh` | SSH keys for git operations (optional) |
+| `/root/.gitconfig` | Git configuration (optional) |
+
+### Environment Variables
+
+| Variable | Purpose |
+|----------|---------|
+| `OPENROUTER_API_KEY` | API key (alternative to config.json) |
+| `CONFIG_PATH` | Custom config.json location |
+
+### Multi-Project Setup
+
+For working on multiple projects:
+
+```bash
+# Create an alias
+alias sa='docker compose -f /path/to/sovereign-agent/docker-compose.yml run --rm -v $(pwd):/workspace agent'
+
+# Use anywhere
+cd ~/projects/my-app
+sa
+```
+
 ---
 
 # Developer Guide
@@ -172,6 +274,9 @@ sovereign-agent/
 ├── install.sh                      # Main installer script
 ├── config.json.example             # User configuration template
 ├── README.md                       # This file
+├── Dockerfile                      # Multi-stage Docker build
+├── docker-compose.yml              # Docker Compose configuration
+├── .dockerignore                   # Docker build exclusions
 ├── lib/
 │   ├── check-deps.sh               # Dependency installer (curl, jq, Go, Bun)
 │   ├── validate.sh                 # Configuration validator

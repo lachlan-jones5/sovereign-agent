@@ -1,0 +1,33 @@
+# Git
+.git
+.gitmodules
+
+# Documentation
+README.md
+*.md
+!vendor/oh-my-opencode/AGENTS.md
+
+# Tests
+tests/
+
+# Scripts not needed in container
+scripts/
+
+# Node modules will be reinstalled
+vendor/oh-my-opencode/node_modules/
+
+# Build artifacts
+vendor/opencode/opencode
+
+# Config files (user provides these)
+config.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
