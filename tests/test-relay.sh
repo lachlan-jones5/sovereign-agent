@@ -433,6 +433,21 @@ else
     fail "main.ts logs the host and port at startup"
 fi
 
+# Test 47: setup script injects actual RELAY_PORT into client script
+if grep -q '\${RELAY_PORT}' "$PROJECT_DIR/relay/main.ts" && grep -q 'RELAY_PORT:-\${RELAY_PORT}' "$PROJECT_DIR/relay/main.ts"; then
+    pass "setup endpoint injects actual RELAY_PORT into client script"
+else
+    fail "setup endpoint should inject actual RELAY_PORT into client script"
+fi
+
+# Test 48: setup script does not hardcode port 8080 as only default
+# The default should come from the server's RELAY_PORT, not hardcoded 8080
+if grep -A5 'path === "/setup"' "$PROJECT_DIR/relay/main.ts" | grep -q 'RELAY_PORT:-8080'; then
+    fail "setup endpoint should not hardcode 8080 - should use server's RELAY_PORT"
+else
+    pass "setup endpoint uses dynamic RELAY_PORT default"
+fi
+
 echo
 echo "========================================="
 echo "Relay Test Results"
