@@ -29,13 +29,15 @@ log_error() {
 }
 
 # Extract values from config.json
+# Note: handles boolean false correctly (jq's // operator treats false as falsy)
 get_config_value() {
     local config_file="$1"
     local jq_path="$2"
     local default="$3"
     
     local value
-    value=$(jq -r "$jq_path // empty" "$config_file")
+    # Use if-then-else to properly handle false/null/missing values
+    value=$(jq -r "if $jq_path == null then \"\" elif $jq_path == false then \"false\" else $jq_path end" "$config_file")
     
     if [[ -z "$value" ]]; then
         echo "$default"
@@ -106,6 +108,41 @@ generate_from_template() {
     local librarian_max_tokens
     librarian_max_tokens=$(get_config_value "$config_file" '.security.max_tokens.librarian' '64000')
 
+    # Plugin version pinning
+    local pin_versions
+    pin_versions=$(get_config_value "$config_file" '.plugins.pin_versions' 'true')
+    
+    local dcp_version
+    if [[ "$pin_versions" == "true" ]]; then
+        dcp_version=$(get_config_value "$config_file" '.plugins.opencode_dcp_version' '0.5.0')
+    else
+        dcp_version="latest"
+    fi
+    
+    local oh_my_opencode_version
+    if [[ "$pin_versions" == "true" ]]; then
+        oh_my_opencode_version=$(get_config_value "$config_file" '.plugins.oh_my_opencode_version' '1.0.0')
+    else
+        oh_my_opencode_version="latest"
+    fi
+
+    # Bash tool permissions (granular control)
+    local bash_permission_mode
+    bash_permission_mode=$(get_config_value "$config_file" '.tool_permissions.bash.mode' 'blocklist')
+    
+    local bash_allowed_commands
+    bash_allowed_commands=$(jq -c '.tool_permissions.bash.allowed_commands // []' "$config_file")
+    
+    local bash_blocked_commands
+    bash_blocked_commands=$(jq -c '.tool_permissions.bash.blocked_commands // ["rm -rf /", "mkfs", "dd", ":(){ :|:& };:"]' "$config_file")
+    
+    local bash_blocked_patterns
+    bash_blocked_patterns=$(jq -c '.tool_permissions.bash.blocked_patterns // []' "$config_file")
+    
+    # Escape backslashes for bash variable substitution
+    # jq output has proper JSON escaping, but bash substitution eats backslashes
+    bash_blocked_patterns="${bash_blocked_patterns//\\/\\\\}"
+
     # Replace placeholders
     content="${content//\{\{OPENROUTER_API_KEY\}\}/$openrouter_api_key}"
     content="${content//\{\{SITE_URL\}\}/$site_url}"
@@ -122,6 +159,12 @@ generate_from_template() {
     content="${content//\{\{ORCHESTRATOR_MAX_TOKENS\}\}/$orchestrator_max_tokens}"
     content="${content//\{\{PLANNER_MAX_TOKENS\}\}/$planner_max_tokens}"
     content="${content//\{\{LIBRARIAN_MAX_TOKENS\}\}/$librarian_max_tokens}"
+    content="${content//\{\{DCP_VERSION\}\}/$dcp_version}"
+    content="${content//\{\{OH_MY_OPENCODE_VERSION\}\}/$oh_my_opencode_version}"
+    content="${content//\{\{BASH_PERMISSION_MODE\}\}/$bash_permission_mode}"
+    content="${content//\{\{BASH_ALLOWED_COMMANDS\}\}/$bash_allowed_commands}"
+    content="${content//\{\{BASH_BLOCKED_COMMANDS\}\}/$bash_blocked_commands}"
+    content="${content//\{\{BASH_BLOCKED_PATTERNS\}\}/$bash_blocked_patterns}"
 
     # Create output directory if needed
     local output_dir

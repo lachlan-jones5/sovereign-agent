@@ -19,8 +19,20 @@
 #
 # Security notes:
 #   - Network is restricted to OpenRouter API and package registries only
-#   - Private LAN ranges are blocked to prevent SSRF attacks
+#   - Private LAN ranges are blocked to prevent SSRF attacks (see lib/network-firewall.sh)
 #   - Only the project directory is mounted (not home directory)
+#   - Container runs with no-new-privileges and read-only root filesystem
+#
+# Network Security (Iron Box):
+#   The container includes iptables rules that:
+#   - Block private IP ranges (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16)
+#   - Only allow traffic to: openrouter.ai, npm/pypi registries, github.com
+#   - Prevent SSRF attacks against local infrastructure
+#
+#   To enable strict network isolation, run with --cap-add=NET_ADMIN:
+#   docker compose run --rm --cap-add=NET_ADMIN sovereign-agent
+#
+#   Or set ENABLE_NETWORK_FIREWALL=true in environment
 
 services:
   agent:
@@ -73,6 +85,10 @@ services:
       
       # Optional: custom config path
       - CONFIG_PATH=/app/config.json
+      
+      # Enable network firewall (requires --cap-add=NET_ADMIN)
+      # Set to "true" to apply iptables rules on container start
+      - ENABLE_NETWORK_FIREWALL=${ENABLE_NETWORK_FIREWALL:-false}
     
     working_dir: /workspace
 

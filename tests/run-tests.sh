@@ -63,6 +63,12 @@ run_test_suite "Install Script Tests" "$SCRIPT_DIR/test-install.sh"
 run_test_suite "Sync Upstream Tests" "$SCRIPT_DIR/test-sync-upstream.sh"
 run_test_suite "Security Features Tests" "$SCRIPT_DIR/test-security-features.sh"
 run_test_suite "AGENTS.md Validation Tests" "$SCRIPT_DIR/test-validate-agents-md.sh"
+run_test_suite "Network Firewall Tests" "$SCRIPT_DIR/test-network-firewall.sh"
+run_test_suite "Budget Firewall Tests" "$SCRIPT_DIR/test-budget-firewall.sh"
+run_test_suite "Oscillation Detector Tests" "$SCRIPT_DIR/test-oscillation-detector.sh"
+run_test_suite "Plugin Version Pinning Tests" "$SCRIPT_DIR/test-plugin-version-pinning.sh"
+run_test_suite "Bash Permissions Tests" "$SCRIPT_DIR/test-bash-permissions.sh"
+run_test_suite "DCP Cache Documentation Tests" "$SCRIPT_DIR/test-dcp-cache-documentation.sh"
 run_omo_tests
 
 # Summary

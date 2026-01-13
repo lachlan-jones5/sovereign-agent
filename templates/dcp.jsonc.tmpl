@@ -1,3 +1,46 @@
+// Dynamic Context Pruning (DCP) Configuration
+// 
+// CACHE INVALIDATION AWARENESS
+// ============================
+// DCP manages context window size by pruning old/redundant tool outputs.
+// Understanding when cache is invalidated is critical for efficient operation:
+//
+// 1. TURN PROTECTION (turnProtection.turns)
+//    - Tool outputs are protected from pruning for N turns after invocation
+//    - Lower values = more aggressive pruning, smaller context
+//    - Higher values = more context retained, may hit token limits
+//    - Default: 2 turns - balance between freshness and context
+//
+// 2. ERROR RETENTION (strategies.purgeErrors.turns)
+//    - Error outputs are kept for N turns to allow recovery
+//    - After N turns, errors are pruned (assumes issue was addressed)
+//    - Default: 4 turns - gives agent time to fix issues
+//
+// 3. DEDUPLICATION (strategies.deduplication)
+//    - Identical tool calls with same parameters are deduplicated
+//    - Only keeps the most recent instance
+//    - Safe to enable; reduces redundant context
+//
+// 4. SUPERSEDE WRITES (strategies.supersedeWrites)
+//    - When a file is written, previous write outputs are pruned
+//    - Prevents stale file content from polluting context
+//    - Safe to enable for most workflows
+//
+// 5. NUDGE FREQUENCY (tools.nudgeFrequency)
+//    - Every N tool calls, agent is reminded to prune proactively
+//    - Lower values = more frequent nudges, more aggressive pruning
+//    - Default: 10 - periodic reminders without being intrusive
+//
+// COST IMPLICATIONS:
+// - Aggressive pruning (low turn protection) reduces token costs
+// - BUT may cause agent to re-read files it already processed
+// - Monitor for "re-read storms" where agent keeps fetching same content
+//
+// RECOMMENDED SETTINGS BY USE CASE:
+// - Large codebase exploration: turnProtection=4, nudgeFrequency=5
+// - Quick bug fixes: turnProtection=2, nudgeFrequency=15
+// - Documentation work: turnProtection=3, nudgeFrequency=20
+
 {
   "enabled": true,
   "debug": false,

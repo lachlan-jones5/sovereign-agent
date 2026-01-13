@@ -24,5 +24,20 @@
       "planner": 16000,
       "librarian": 64000
     }
+  },
+
+  "plugins": {
+    "opencode_dcp_version": "0.5.0",
+    "oh_my_opencode_version": "1.0.0",
+    "pin_versions": true
+  },
+
+  "tool_permissions": {
+    "bash": {
+      "mode": "blocklist",
+      "allowed_commands": [],
+      "blocked_commands": ["rm -rf /", "mkfs", "dd", ":(){ :|:& };:"],
+      "blocked_patterns": ["curl.*\\|.*sh", "wget.*\\|.*bash", "> /dev/sd"]
+    }
   }
 }

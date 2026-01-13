@@ -108,8 +108,9 @@ test_dcp_turn_protection() {
     
     generate_all_configs "$TEST_TMP_DIR/config.json" "$output_dir" >/dev/null 2>&1
     
+    # JSONC files have comments, so we need to strip them before parsing with jq
     local turns
-    turns=$(jq -r '.turnProtection.turns' "$output_dir/dcp.jsonc")
+    turns=$(sed '/^\/\//d' "$output_dir/dcp.jsonc" | jq -r '.turnProtection.turns')
     
     if [[ "$turns" == "3" ]]; then
         pass "$name"
@@ -199,8 +200,9 @@ EOF
     
     generate_all_configs "$TEST_TMP_DIR/minimal.json" "$output_dir" >/dev/null 2>&1
     
+    # JSONC files have comments, so we need to strip them before parsing with jq
     local turns
-    turns=$(jq -r '.turnProtection.turns' "$output_dir/dcp.jsonc")
+    turns=$(sed '/^\/\//d' "$output_dir/dcp.jsonc" | jq -r '.turnProtection.turns')
     
     # Default is 2
     if [[ "$turns" == "2" ]]; then
