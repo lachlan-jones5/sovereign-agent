@@ -203,7 +203,7 @@ set -uo pipefail
 
 # Use the port this script was fetched from (injected by relay), or env var, or default
 RELAY_PORT="\${RELAY_PORT:-${RELAY_PORT}}"
-INSTALL_DIR="\${INSTALL_DIR:-\$HOME/sovereign-agent}"
+INSTALL_DIR="\${INSTALL_DIR:-\$PWD/sovereign-agent}"
 
 echo "=== Sovereign Agent Client Setup (via tunnel) ==="
 echo ""
