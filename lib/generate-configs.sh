@@ -80,6 +80,9 @@ generate_from_template() {
     local librarian_model
     librarian_model=$(get_config_value "$config_file" '.models.librarian' 'google/gemini-3-flash')
     
+    local genius_model
+    genius_model=$(get_config_value "$config_file" '.models.genius' 'anthropic/claude-opus-4')
+    
     local fallback_model
     fallback_model=$(get_config_value "$config_file" '.models.fallback' 'meta-llama/llama-3.3-70b-instruct')
     
@@ -169,6 +172,7 @@ generate_from_template() {
     content="${content//\{\{ORCHESTRATOR_MODEL\}\}/$orchestrator_model}"
     content="${content//\{\{PLANNER_MODEL\}\}/$planner_model}"
     content="${content//\{\{LIBRARIAN_MODEL\}\}/$librarian_model}"
+    content="${content//\{\{GENIUS_MODEL\}\}/$genius_model}"
     content="${content//\{\{FALLBACK_MODEL\}\}/$fallback_model}"
     content="${content//\{\{ULTRAWORK_MAX_ITERATIONS\}\}/$ultrawork_max}"
     content="${content//\{\{DCP_TURN_PROTECTION\}\}/$dcp_turn_protection}"

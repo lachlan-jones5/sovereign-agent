@@ -1065,6 +1065,20 @@ else
     fail "Sisyphus agent model should have openrouter/ prefix for OpenRouter API"
 fi
 
+# Test: Genius agent model has openrouter/ prefix
+if grep -A2 '"Genius"' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" | grep -q 'openrouter/'; then
+    pass "Genius agent model has openrouter/ prefix"
+else
+    fail "Genius agent model should have openrouter/ prefix"
+fi
+
+# Test: Genius agent uses GENIUS_MODEL placeholder
+if grep -A2 '"Genius"' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" | grep -q 'GENIUS_MODEL'; then
+    pass "Genius agent uses GENIUS_MODEL placeholder"
+else
+    fail "Genius agent should use GENIUS_MODEL placeholder"
+fi
+
 # Test: oracle agent model has openrouter/ prefix
 if grep -A2 '"oracle"' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" | grep -q 'openrouter/'; then
     pass "oracle agent model has openrouter/ prefix"
@@ -1163,6 +1177,27 @@ if grep -q 'dcp\.jsonc' "$PROJECT_ROOT/lib/generate-configs.sh" 2>/dev/null; the
     pass "generate-configs.sh deploys dcp.jsonc"
 else
     fail "generate-configs.sh should deploy dcp.jsonc"
+fi
+
+# Test: Config generation handles GENIUS_MODEL placeholder
+if grep -q 'GENIUS_MODEL' "$PROJECT_ROOT/lib/generate-configs.sh" 2>/dev/null; then
+    pass "generate-configs.sh handles GENIUS_MODEL placeholder"
+else
+    fail "generate-configs.sh should handle GENIUS_MODEL placeholder"
+fi
+
+# Test: Config generation extracts genius model from config
+if grep -q '\.models\.genius' "$PROJECT_ROOT/lib/generate-configs.sh" 2>/dev/null; then
+    pass "generate-configs.sh extracts genius model from config"
+else
+    fail "generate-configs.sh should extract genius model from .models.genius"
+fi
+
+# Test: Setup script config.json has genius model
+if grep -q '"genius"' "$PROJECT_ROOT/scripts/setup-client.sh" 2>/dev/null; then
+    pass "setup-client.sh config.json has genius model"
+else
+    fail "setup-client.sh config.json should have genius model"
 fi
 
 # Test: DCP and oh-my-opencode configs are separate (no duplication)
