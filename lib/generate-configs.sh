@@ -78,7 +78,7 @@ generate_from_template() {
     planner_model=$(get_config_value "$config_file" '.models.planner' 'anthropic/claude-opus-4.5')
     
     local librarian_model
-    librarian_model=$(get_config_value "$config_file" '.models.librarian' 'google/gemini-3-flash')
+    librarian_model=$(get_config_value "$config_file" '.models.librarian' 'google/gemini-3-flash-preview')
     
     local genius_model
     genius_model=$(get_config_value "$config_file" '.models.genius' 'anthropic/claude-opus-4.5')
