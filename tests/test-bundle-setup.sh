@@ -1209,6 +1209,192 @@ else
 fi
 
 # ============================================
+# OPENCODE_CWD Environment Variable Tests
+# ============================================
+echo ""
+echo "--- OPENCODE_CWD Environment Variable Tests ---"
+
+# Test: Wrapper script sets OPENCODE_CWD
+if grep -q 'OPENCODE_CWD="\$PWD"\|export OPENCODE_CWD' "$PROJECT_ROOT/lib/check-deps.sh" 2>/dev/null; then
+    pass "Wrapper script sets OPENCODE_CWD environment variable"
+else
+    fail "Wrapper script should set OPENCODE_CWD=\$PWD for working directory"
+fi
+
+# Test: Wrapper script exports OPENCODE_CWD
+if grep -q 'export OPENCODE_CWD' "$PROJECT_ROOT/lib/check-deps.sh" 2>/dev/null; then
+    pass "Wrapper script exports OPENCODE_CWD"
+else
+    fail "Wrapper script should export OPENCODE_CWD so opencode can read it"
+fi
+
+# Test: Wrapper script changes to opencode source dir for module resolution
+if grep -q 'cd "\$HOME/.local/opencode"\|cd \$HOME/.local/opencode' "$PROJECT_ROOT/lib/check-deps.sh" 2>/dev/null; then
+    pass "Wrapper script changes to opencode source directory for module resolution"
+else
+    fail "Wrapper script should cd to ~/.local/opencode for node_modules resolution"
+fi
+
+# Test: Opencode run.ts has getWorkingDirectory function
+if grep -q 'getWorkingDirectory\|OPENCODE_CWD' "$PROJECT_ROOT/vendor/opencode/packages/opencode/src/cli/cmd/run.ts" 2>/dev/null; then
+    pass "Opencode run.ts supports OPENCODE_CWD environment variable"
+else
+    fail "Opencode run.ts should have getWorkingDirectory() using OPENCODE_CWD"
+fi
+
+# Test: Opencode run.ts uses getWorkingDirectory for bootstrap
+if grep -q 'bootstrap(getWorkingDirectory()' "$PROJECT_ROOT/vendor/opencode/packages/opencode/src/cli/cmd/run.ts" 2>/dev/null; then
+    pass "Opencode bootstrap uses getWorkingDirectory()"
+else
+    fail "Opencode bootstrap should use getWorkingDirectory() not process.cwd()"
+fi
+
+# Test: Opencode run.ts uses getWorkingDirectory for file path resolution
+if grep -q 'getWorkingDirectory().*filePath\|path.resolve(getWorkingDirectory()' "$PROJECT_ROOT/vendor/opencode/packages/opencode/src/cli/cmd/run.ts" 2>/dev/null; then
+    pass "Opencode uses getWorkingDirectory() for file path resolution"
+else
+    fail "Opencode should use getWorkingDirectory() for resolving file paths"
+fi
+
+# ============================================
+# OpenRouter Model Registration Tests
+# ============================================
+echo ""
+echo "--- OpenRouter Model Registration Tests ---"
+
+# Test: opencode.json template has models in provider.openrouter section
+if grep -A20 '"openrouter"' "$PROJECT_ROOT/templates/opencode.json.tmpl" 2>/dev/null | grep -q '"models"'; then
+    pass "opencode.json template has models in provider.openrouter section"
+else
+    fail "opencode.json template should register models in provider.openrouter.models"
+fi
+
+# Test: All model tiers are registered in opencode.json provider.models
+for model_tier in ORCHESTRATOR_MODEL PLANNER_MODEL LIBRARIAN_MODEL GENIUS_MODEL FALLBACK_MODEL; do
+    if grep -A30 '"openrouter"' "$PROJECT_ROOT/templates/opencode.json.tmpl" 2>/dev/null | grep -q "{{$model_tier}}"; then
+        pass "opencode.json registers $model_tier in provider.openrouter.models"
+    else
+        fail "opencode.json should register {{$model_tier}} in provider.openrouter.models"
+    fi
+done
+
+# ============================================
+# Claude 4.5 Model Defaults Tests
+# ============================================
+echo ""
+echo "--- Claude 4.5 Model Defaults Tests ---"
+
+# Test: Default genius model is claude-opus-4.5 (not 4)
+if grep -q 'claude-opus-4\.5' "$PROJECT_ROOT/lib/generate-configs.sh" 2>/dev/null; then
+    pass "Default genius model is claude-opus-4.5"
+else
+    fail "Default genius model should be claude-opus-4.5 (not claude-opus-4)"
+fi
+
+# Test: setup-client.sh uses claude-opus-4.5 for genius
+if grep -q 'claude-opus-4\.5' "$PROJECT_ROOT/scripts/setup-client.sh" 2>/dev/null; then
+    pass "setup-client.sh uses claude-opus-4.5 for genius model"
+else
+    fail "setup-client.sh should use claude-opus-4.5 for genius model"
+fi
+
+# Test: No claude-opus-4 (without .5) in lib/generate-configs.sh defaults
+if ! grep -E 'claude-opus-4[^.]|claude-opus-4"' "$PROJECT_ROOT/lib/generate-configs.sh" 2>/dev/null; then
+    pass "No deprecated claude-opus-4 in generate-configs.sh defaults"
+else
+    fail "Should use claude-opus-4.5, not deprecated claude-opus-4 in generate-configs.sh"
+fi
+
+# Test: No claude-opus-4 (without .5) in setup-client.sh defaults
+if ! grep -E 'claude-opus-4[^.]|claude-opus-4"' "$PROJECT_ROOT/scripts/setup-client.sh" 2>/dev/null; then
+    pass "No deprecated claude-opus-4 in setup-client.sh defaults"
+else
+    fail "Should use claude-opus-4.5, not deprecated claude-opus-4 in setup-client.sh"
+fi
+
+# Test: No claude-sonnet-4 (without .5) in lib/generate-configs.sh defaults
+if ! grep -E 'claude-sonnet-4[^.]|claude-sonnet-4"' "$PROJECT_ROOT/lib/generate-configs.sh" 2>/dev/null; then
+    pass "No deprecated claude-sonnet-4 in generate-configs.sh defaults"
+else
+    fail "Should use claude-sonnet-4.5, not deprecated claude-sonnet-4 in generate-configs.sh"
+fi
+
+# Test: No claude-sonnet-4 (without .5) in setup-client.sh defaults
+if ! grep -E 'claude-sonnet-4[^.]|claude-sonnet-4"' "$PROJECT_ROOT/scripts/setup-client.sh" 2>/dev/null; then
+    pass "No deprecated claude-sonnet-4 in setup-client.sh defaults"
+else
+    fail "Should use claude-sonnet-4.5, not deprecated claude-sonnet-4 in setup-client.sh"
+fi
+
+# Test: MODELS.md has deprecation warning for claude-opus-4
+if grep -qi 'never use.*claude-opus-4\|deprecated.*claude.*4[^.]' "$PROJECT_ROOT/docs/MODELS.md" 2>/dev/null; then
+    pass "MODELS.md documents that claude-opus-4 should not be used"
+else
+    fail "MODELS.md should document that claude-opus-4 and claude-sonnet-4 are deprecated"
+fi
+
+# ============================================
+# Gitignore and Security Tests
+# ============================================
+echo ""
+echo "--- Gitignore and Security Tests ---"
+
+# Test: .gitignore file exists
+if [[ -f "$PROJECT_ROOT/.gitignore" ]]; then
+    pass ".gitignore file exists"
+else
+    fail ".gitignore file should exist to protect secrets"
+fi
+
+# Test: config.json is in .gitignore
+if grep -q 'config\.json' "$PROJECT_ROOT/.gitignore" 2>/dev/null; then
+    pass "config.json is listed in .gitignore"
+else
+    fail "config.json should be in .gitignore to protect API keys"
+fi
+
+# Test: config.json is NOT tracked by git
+if ! git -C "$PROJECT_ROOT" ls-files --error-unmatch config.json 2>/dev/null; then
+    pass "config.json is not tracked by git"
+else
+    fail "config.json should NOT be tracked by git (contains API keys)"
+fi
+
+# Test: .gitignore excludes node_modules
+if grep -q 'node_modules' "$PROJECT_ROOT/.gitignore" 2>/dev/null; then
+    pass ".gitignore excludes node_modules"
+else
+    fail ".gitignore should exclude node_modules"
+fi
+
+# ============================================
+# Orchestrator Model Tests
+# ============================================
+echo ""
+echo "--- Orchestrator Model Tests ---"
+
+# Test: Default orchestrator is deepseek-v3.2 in generate-configs.sh
+if grep -q 'deepseek-v3\.2\|deepseek/deepseek-v3\.2' "$PROJECT_ROOT/lib/generate-configs.sh" 2>/dev/null; then
+    pass "Default orchestrator is deepseek-v3.2 in generate-configs.sh"
+else
+    fail "Default orchestrator should be deepseek-v3.2 in generate-configs.sh"
+fi
+
+# Test: setup-client.sh uses deepseek-v3.2 for orchestrator
+if grep -q 'deepseek-v3\.2\|deepseek/deepseek-v3\.2' "$PROJECT_ROOT/scripts/setup-client.sh" 2>/dev/null; then
+    pass "setup-client.sh uses deepseek-v3.2 for orchestrator"
+else
+    fail "setup-client.sh should use deepseek-v3.2 for orchestrator"
+fi
+
+# Test: Orchestrator is not deepseek-r1 (that's a reasoning model for planner)
+if ! grep -E '"orchestrator".*deepseek-r1[^0-9-]' "$PROJECT_ROOT/scripts/setup-client.sh" 2>/dev/null; then
+    pass "Orchestrator is not set to deepseek-r1 (reasoning model belongs in planner)"
+else
+    fail "Orchestrator should not be deepseek-r1 (that's for the planner role)"
+fi
+
+# ============================================
 # Summary
 # ============================================
 echo ""
