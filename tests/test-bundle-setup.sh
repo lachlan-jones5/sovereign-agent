@@ -1023,6 +1023,20 @@ else
     fail "opencode template should have \$schema"
 fi
 
+# Test: opencode template has DCP plugin with valid version
+if grep -q '@tarquinen/opencode-dcp@[0-9]' "$PROJECT_ROOT/templates/opencode.json.tmpl" 2>/dev/null; then
+    pass "opencode template has DCP plugin with pinned version"
+else
+    fail "opencode template should have DCP plugin with version (not template var)"
+fi
+
+# Test: opencode template has oh-my-opencode plugin with valid version
+if grep -q 'oh-my-opencode@[0-9]' "$PROJECT_ROOT/templates/opencode.json.tmpl" 2>/dev/null; then
+    pass "opencode template has oh-my-opencode plugin with pinned version"
+else
+    fail "opencode template should have oh-my-opencode plugin with version"
+fi
+
 # ============================================
 # Summary
 # ============================================
