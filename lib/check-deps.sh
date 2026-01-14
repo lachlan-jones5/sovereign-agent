@@ -247,21 +247,25 @@ build_opencode() {
     # Install the CLI globally via bun link or create a wrapper
     mkdir -p "$HOME/.local/bin"
     
-    # Create a wrapper script that runs opencode via bun
-    cat > "$HOME/.local/bin/opencode" << 'WRAPPER'
-#!/usr/bin/env bash
-exec bun run --cwd "$(dirname "$(readlink -f "$0")")/../opencode" dev "$@"
-WRAPPER
-    
     # Create a symlink to the opencode directory
     local opencode_link="$HOME/.local/opencode"
     rm -rf "$opencode_link"
     ln -sf "$opencode_dir" "$opencode_link"
     
-    # Update wrapper to use the symlink
+    # Create a wrapper script that runs opencode via bun
+    # Use full path to bun since PATH may not be set up yet
     cat > "$HOME/.local/bin/opencode" << 'WRAPPER'
 #!/usr/bin/env bash
-exec bun run --cwd "$HOME/.local/opencode" dev "$@"
+# Find bun - check common locations
+if [[ -x "$HOME/.bun/bin/bun" ]]; then
+    BUN="$HOME/.bun/bin/bun"
+elif command -v bun &>/dev/null; then
+    BUN="bun"
+else
+    echo "Error: bun not found. Run: curl -fsSL https://bun.sh/install | bash" >&2
+    exit 1
+fi
+exec "$BUN" run --cwd "$HOME/.local/opencode" dev "$@"
 WRAPPER
     chmod +x "$HOME/.local/bin/opencode"
 

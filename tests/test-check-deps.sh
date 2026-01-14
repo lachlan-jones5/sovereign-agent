@@ -628,6 +628,31 @@ test_check_all_deps_fails_on_opencode
 test_check_all_deps_error_message
 
 echo
+echo "--- OpenCode Wrapper Tests ---"
+echo
+
+# Test 28: opencode wrapper uses full bun path
+if grep -q '\.bun/bin/bun\|HOME.*\.bun.*bun' "$LIB_DIR/check-deps.sh"; then
+    pass "opencode wrapper uses full bun path (~/.bun/bin/bun)"
+else
+    fail "opencode wrapper should use full bun path for PATH-less execution"
+fi
+
+# Test 29: opencode wrapper has fallback to command -v bun
+if grep -q 'command -v bun\|which bun' "$LIB_DIR/check-deps.sh"; then
+    pass "opencode wrapper has fallback to find bun in PATH"
+else
+    fail "opencode wrapper should fallback to bun in PATH"
+fi
+
+# Test 30: opencode wrapper provides helpful error if bun not found
+if grep -q 'bun not found\|bun.sh/install' "$LIB_DIR/check-deps.sh"; then
+    pass "opencode wrapper provides helpful error if bun not found"
+else
+    fail "opencode wrapper should provide helpful error if bun not found"
+fi
+
+echo
 echo "========================================"
 echo "Results: $TESTS_PASSED/$TESTS_RUN passed"
 echo "========================================"
