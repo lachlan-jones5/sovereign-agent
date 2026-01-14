@@ -182,11 +182,32 @@ else
     fail "Bundle endpoint should verify essential files exist"
 fi
 
-# Test: Bundle endpoint verifies essential files exist before streaming
-if grep -q 'install\.sh.*lib.*relay\|ls.*install\.sh' "$PROJECT_ROOT/relay/main.ts"; then
-    pass "Bundle endpoint verifies essential files exist before streaming"
+# Test: Bundle endpoint verifies vendor submodules have content
+if grep -q 'vendor/opencode/go\.mod\|vendor.*opencode.*go\.mod' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Bundle endpoint verifies vendor/opencode has content (go.mod)"
 else
-    fail "Bundle endpoint should verify essential files exist before streaming"
+    fail "Bundle endpoint should verify vendor/opencode has content (go.mod)"
+fi
+
+# Test: Bundle endpoint verifies oh-my-opencode has content
+if grep -q 'vendor/oh-my-opencode/package\.json\|oh-my-opencode.*package\.json' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Bundle endpoint verifies vendor/oh-my-opencode has content (package.json)"
+else
+    fail "Bundle endpoint should verify vendor/oh-my-opencode has content (package.json)"
+fi
+
+# Test: Bundle endpoint returns 500 error if submodules are empty
+if grep -q 'Vendor submodules are not populated\|submodules are empty\|submodules.*500' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Bundle endpoint returns 500 error if submodules are empty"
+else
+    fail "Bundle endpoint should return 500 error if submodules are empty"
+fi
+
+# Test: Bundle endpoint provides fix instructions for empty submodules
+if grep -q 'git submodule update --init --recursive.*relay\|Run.*submodule.*relay server' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Bundle endpoint provides fix instructions for empty submodules"
+else
+    fail "Bundle endpoint should provide fix instructions for empty submodules"
 fi
 
 # Test: Bundle endpoint returns 500 error with details on failure
@@ -506,6 +527,41 @@ if grep -q 'pipefail' "$PROJECT_ROOT/relay/main.ts"; then
     pass "Setup script uses pipefail for error detection"
 else
     fail "Setup script should use pipefail for error detection"
+fi
+
+# Test: Setup script checks install.sh exit status
+if grep -q 'if ! \./install\.sh\|install\.sh.*exit\|install\.sh.*failed' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Setup script checks install.sh exit status"
+else
+    fail "Setup script should check install.sh exit status"
+fi
+
+# Test: Setup script shows failure message on install.sh error
+if grep -q 'Setup FAILED\|setup.*FAILED\|Setup.*failed' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Setup script shows failure message on install.sh error"
+else
+    fail "Setup script should show failure message on install.sh error"
+fi
+
+# Test: Setup script provides troubleshooting hints on failure
+if grep -q 'Common fixes\|submodule update\|Check the output' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Setup script provides troubleshooting hints on failure"
+else
+    fail "Setup script should provide troubleshooting hints on failure"
+fi
+
+# Test: Setup script exits with non-zero status on install.sh failure
+if grep -qE '(if ! \./install\.sh|install\.sh.*\|\|)' "$PROJECT_ROOT/relay/main.ts" && grep -q 'exit 1' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Setup script exits with non-zero status on install.sh failure"
+else
+    fail "Setup script should exit with non-zero status on install.sh failure"
+fi
+
+# Test: Setup script instructs user to run exec $SHELL
+if grep -q 'exec.*SHELL\|exec \$SHELL\|exec \\$SHELL' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Setup script instructs user to run 'exec \$SHELL'"
+else
+    fail "Setup script should instruct user to run 'exec \$SHELL' for PATH changes"
 fi
 
 # ============================================
