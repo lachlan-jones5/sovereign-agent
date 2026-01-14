@@ -66,15 +66,38 @@ validate_config() {
         log_info "Relay client mode detected - API key not required locally"
     fi
 
-    # Required fields (API key only required if not in relay client mode)
+    # Check if tier is specified (tier-based config doesn't need models)
+    local tier
+    tier=$(jq -r '.tier // empty' "$config_file")
+    
+    local has_tier=false
+    if [[ -n "$tier" ]]; then
+        has_tier=true
+        case "$tier" in
+            free|frugal|premium)
+                log_info "Using tier: $tier (models will be configured from tier template)"
+                ;;
+            *)
+                log_warn "Unknown tier '$tier', will default to 'frugal'"
+                ;;
+        esac
+    fi
+
+    # Required fields - models only required if no tier is specified
     local required_fields=(
         ".site_url"
         ".site_name"
-        ".models.orchestrator"
-        ".models.planner"
-        ".models.librarian"
-        ".models.fallback"
     )
+    
+    # Only require models if no tier is set
+    if [[ "$has_tier" == "false" ]]; then
+        required_fields+=(
+            ".models.orchestrator"
+            ".models.planner"
+            ".models.librarian"
+            ".models.fallback"
+        )
+    fi
 
     for field in "${required_fields[@]}"; do
         local value
@@ -109,10 +132,13 @@ validate_config() {
     fi
 
     # Validate optional preferences (set defaults if missing)
-    local genius_model
-    genius_model=$(jq -r '.models.genius // empty' "$config_file")
-    if [[ -z "$genius_model" ]]; then
-        log_warn "models.genius not set, will use default: anthropic/claude-opus-4.5"
+    # Only warn about genius model if not using tier system
+    if [[ "$has_tier" == "false" ]]; then
+        local genius_model
+        genius_model=$(jq -r '.models.genius // empty' "$config_file")
+        if [[ -z "$genius_model" ]]; then
+            log_warn "models.genius not set, will use default: anthropic/claude-opus-4.5"
+        fi
     fi
     
     local ultrawork_max
