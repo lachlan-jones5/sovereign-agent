@@ -195,8 +195,8 @@ Examples:
     $0 stop
 
 Architecture:
-    Work VM ──SSH──> Laptop ──SSH──> Pi ──HTTPS──> OpenRouter
-    (client)        (jump)         (server)
+    Client VM ──SSH──> Laptop ──SSH──> Pi ──HTTPS──> OpenRouter
+    (client)          (jump)          (server)
 
 EOF
 }

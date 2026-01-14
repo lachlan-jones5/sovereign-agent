@@ -4,17 +4,17 @@ Different deployment patterns for Sovereign Agent.
 
 ## Direct SSH Tunnel (No Laptop Bridge)
 
-If the Work VM can directly SSH to the relay server:
+If the Client VM can directly SSH to the relay server:
 
 ```
 ┌──────────────┐         ┌────────────────┐
-│   Work VM    │─────────│   Pi/VPS       │
+│   Client VM  │─────────│   Pi/VPS       │
 │   OpenCode   │  SSH    │   (relay)      │
 │              │  tunnel │   :8081        │
 └──────────────┘         └────────────────┘
 ```
 
-**On Work VM:**
+**On Client VM:**
 
 ```bash
 # Create tunnel
@@ -117,7 +117,7 @@ autossh -M 0 \
   -o "ServerAliveInterval 30" \
   -o "ServerAliveCountMax 3" \
   -R 8081:relay-server:8081 \
-  workvm -N
+  devvm -N
 ```
 
 ## systemd Service (Linux)
@@ -131,7 +131,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/autossh -M 0 -o "ServerAliveInterval 30" -R 8081:relay-server:8081 workvm -N
+ExecStart=/usr/bin/autossh -M 0 -o "ServerAliveInterval 30" -R 8081:relay-server:8081 devvm -N
 Restart=always
 RestartSec=10
 User=youruser
@@ -167,7 +167,7 @@ Create `~/Library/LaunchAgents/com.sovereign.tunnel.plist`:
         <string>ServerAliveInterval 30</string>
         <string>-R</string>
         <string>8081:relay-server:8081</string>
-        <string>workvm</string>
+        <string>devvm</string>
         <string>-N</string>
     </array>
     <key>RunAtLoad</key>
@@ -186,7 +186,7 @@ launchctl load ~/Library/LaunchAgents/com.sovereign.tunnel.plist
 
 ## Docker Network Mode
 
-If your Work VM runs dev containers, use host networking:
+If your Client VM runs dev containers, use host networking:
 
 ```bash
 # Run container with host networking

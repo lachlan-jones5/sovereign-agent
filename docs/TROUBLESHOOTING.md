@@ -19,7 +19,7 @@ Common issues and solutions.
    ```
 3. Restart tunnel from laptop:
    ```bash
-   ssh -R 8081:relay-server:8081 workvm -N &
+   ssh -R 8081:relay-server:8081 devvm -N &
    ```
 
 ### "Relay not responding after 10 seconds"
@@ -109,7 +109,7 @@ docker compose -f docker-compose.relay.yml up -d
 **Fix:** Use autossh or add keepalive:
 ```bash
 # With autossh
-autossh -M 0 -o "ServerAliveInterval 30" -R 8081:relay:8081 workvm -N
+autossh -M 0 -o "ServerAliveInterval 30" -R 8081:relay:8081 devvm -N
 
 # Or add to ~/.ssh/config
 Host *

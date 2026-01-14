@@ -6,7 +6,7 @@ Sovereign Agent uses a relay server architecture to keep API keys secure while a
 
 ```
 ┌──────────────────┐                      ┌──────────────┐         ┌────────────────┐
-│   Work VM        │◀── reverse tunnel ──│   Laptop     │────────▶│   Pi/VPS       │
+│   Client VM      │◀── reverse tunnel ──│   Laptop     │────────▶│   Pi/VPS       │
 │   (container)    │     (from laptop)   │   (bridge)   │  SSH    │   (relay)      │
 │                  │                     │              │         │                │
 │  ┌────────────┐  │                     │              │         │ ┌────────────┐ │
@@ -45,16 +45,16 @@ The relay server runs on a trusted machine you control. It:
 
 ### Laptop (Bridge)
 
-Your laptop bridges the Work VM and relay server using SSH tunnels:
+Your laptop bridges the Client VM and relay server using SSH tunnels:
 
 1. **Forward tunnel to Pi**: Connects to relay server
-2. **Reverse tunnel to Work VM**: Exposes relay to Work VM's localhost
+2. **Reverse tunnel to Client VM**: Exposes relay to Client VM's localhost
 
-This allows the Work VM to reach the relay without direct network access.
+This allows the Client VM to reach the relay without direct network access.
 
-### Work VM (Client)
+### Client VM (Client)
 
-The Work VM runs OpenCode in client mode:
+The Client VM runs OpenCode in client mode:
 
 - No API key needed locally (relay handles auth)
 - All requests go to `localhost:8081` (tunneled to relay)
@@ -84,7 +84,7 @@ The Work VM runs OpenCode in client mode:
 | Port | Location | Purpose |
 |------|----------|---------|
 | 8081 | Relay server | Relay listens here |
-| 8081 | Work VM host | Reverse tunnel endpoint |
+| 8081 | Client VM host | Reverse tunnel endpoint |
 | 8081 | Container | SSH tunnel to host |
 
 All ports configurable via `RELAY_PORT` environment variable.

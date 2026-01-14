@@ -4,7 +4,7 @@
  * A minimal relay service that forwards API requests to OpenRouter,
  * adding authentication from a local config file.
  *
- * This allows running OpenCode on a remote machine (Work VM) while
+ * This allows running OpenCode on a remote machine (Client VM) while
  * keeping API keys secure on a trusted machine (Pi) and avoiding
  * network monitoring on the remote machine.
  *

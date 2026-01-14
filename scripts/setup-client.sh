@@ -1,5 +1,5 @@
 #!/bin/bash
-# setup-client.sh - Full client setup for Work VM
+# setup-client.sh - Full client setup for Client VM
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/lachlan-jones5/sovereign-agent/master/scripts/setup-client.sh | bash

@@ -4,7 +4,7 @@ Privacy-compliant AI coding environment. Keep your API keys secure on a trusted 
 
 ```
 ┌──────────────┐                     ┌──────────────┐         ┌────────────┐
-│   Work VM    │◀── reverse tunnel ──│   Laptop     │────────▶│  Pi/VPS    │
+│   Client VM  │◀── reverse tunnel ──│   Laptop     │────────▶│  Pi/VPS    │
 │   OpenCode   │     (from laptop)   │   (bridge)   │  SSH    │  (relay)   │
 └──────────────┘                     └──────────────┘         └────────────┘
                                                                     │
@@ -29,11 +29,11 @@ OPENROUTER_API_KEY=sk-or-v1-... bash <(curl -fsSL https://raw.githubusercontent.
 # Tunnel laptop → Pi (forward)
 ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -L 8081:127.0.0.1:8081 pi@your-relay.example.com -N &
 
-# Tunnel laptop → Work VM (reverse)
-ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -R 8081:localhost:8081 workvm -N &
+# Tunnel laptop → Client VM (reverse)
+ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -R 8081:localhost:8081 devvm -N &
 ```
 
-### 3. Install client (Work VM)
+### 3. Install client (Client VM)
 
 ```bash
 curl -fsSL http://localhost:8081/setup | bash
@@ -50,13 +50,13 @@ opencode
 
 Your laptop bridges two SSH tunnels:
 - **Forward tunnel** to the relay server (Pi/VPS)
-- **Reverse tunnel** to your Work VM
+- **Reverse tunnel** to your Client VM
 
-The Work VM sees `localhost:8081` which routes through your laptop to the relay. The relay adds your API key and forwards to OpenRouter with ZDR (Zero Data Retention).
+The Client VM sees `localhost:8081` which routes through your laptop to the relay. The relay adds your API key and forwards to OpenRouter with ZDR (Zero Data Retention).
 
-**Key benefit:** API keys never touch the Work VM.
+**Key benefit:** API keys never touch the Client VM.
 
-## If Work VM Runs Docker
+## If Client VM Runs Docker
 
 If your dev environment is inside a container, you need one more tunnel from the container to the host:
 
