@@ -173,7 +173,7 @@ main() {
     echo "  - Provider: OpenRouter"
     echo
     echo -e "${BOLD}Next steps:${NC}"
-    echo "  1. Open a new terminal (to ensure PATH is updated)"
+    echo "  1. Start a new shell session: ${BOLD}exec \$SHELL${NC}"
     echo "  2. Navigate to your project directory"
     echo "  3. Run: ${BOLD}opencode${NC}"
     echo
@@ -184,9 +184,6 @@ main() {
     echo -e "${BOLD}Maintenance:${NC}"
     echo "  - Sync with upstream: ./scripts/sync-upstream.sh status"
     echo "  - Rebase on upstream:  ./scripts/sync-upstream.sh all"
-    echo
-    echo -e "${YELLOW}Note: If opencode is not found, you may need to restart your shell${NC}"
-    echo -e "${YELLOW}or add ~/.local/bin to your PATH.${NC}"
     echo
 }
 

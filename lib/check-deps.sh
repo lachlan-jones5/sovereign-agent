@@ -151,6 +151,49 @@ check_bun() {
     fi
 }
 
+# Add ~/.local/bin to PATH in shell rc file if not already present
+ensure_local_bin_in_path() {
+    local local_bin="$HOME/.local/bin"
+    local path_export="export PATH=\"\$HOME/.local/bin:\$PATH\""
+    
+    # Determine which shell rc file to use
+    local rc_file=""
+    if [[ -n "${ZSH_VERSION:-}" ]] || [[ "$SHELL" == */zsh ]]; then
+        rc_file="$HOME/.zshrc"
+    elif [[ -n "${BASH_VERSION:-}" ]] || [[ "$SHELL" == */bash ]]; then
+        # Prefer .bashrc for interactive shells, but use .profile if .bashrc doesn't exist
+        if [[ -f "$HOME/.bashrc" ]]; then
+            rc_file="$HOME/.bashrc"
+        else
+            rc_file="$HOME/.profile"
+        fi
+    else
+        # Fallback to .profile for other shells
+        rc_file="$HOME/.profile"
+    fi
+    
+    # Check if already in PATH
+    if [[ ":$PATH:" == *":$local_bin:"* ]]; then
+        log_info "~/.local/bin already in PATH"
+        return 0
+    fi
+    
+    # Check if already in rc file
+    if [[ -f "$rc_file" ]] && grep -q '\.local/bin' "$rc_file"; then
+        log_info "~/.local/bin already configured in $rc_file"
+        return 0
+    fi
+    
+    # Add to rc file
+    log_info "Adding ~/.local/bin to PATH in $rc_file"
+    echo "" >> "$rc_file"
+    echo "# Added by sovereign-agent installer" >> "$rc_file"
+    echo "$path_export" >> "$rc_file"
+    
+    # Also export for current session
+    export PATH="$local_bin:$PATH"
+}
+
 # Build OpenCode from submodule
 build_opencode() {
     local opencode_dir="$VENDOR_DIR/opencode"
@@ -158,6 +201,19 @@ build_opencode() {
     if [[ ! -d "$opencode_dir" ]]; then
         log_error "OpenCode submodule not found at $opencode_dir"
         log_error "Run: git submodule update --init --recursive"
+        return 1
+    fi
+
+    # Verify submodule has content (not just empty directory)
+    if [[ ! -f "$opencode_dir/go.mod" ]]; then
+        log_error "OpenCode submodule appears empty at $opencode_dir"
+        log_error "Run: git submodule update --init --recursive"
+        return 1
+    fi
+
+    # Verify Go is available
+    if ! command_exists go; then
+        log_error "Go is required but not found in PATH"
         return 1
     fi
 
@@ -170,22 +226,47 @@ build_opencode() {
         log_info "OpenCode binary already exists, rebuilding..."
     fi
 
-    # Build
-    go build -o opencode ./cmd/opencode
+    # Build with error handling
+    if ! go build -o opencode ./cmd/opencode; then
+        log_error "Failed to build OpenCode"
+        cd "$PROJECT_DIR"
+        return 1
+    fi
+
+    # Verify binary was created
+    if [[ ! -f "./opencode" ]]; then
+        log_error "Build succeeded but binary not found"
+        cd "$PROJECT_DIR"
+        return 1
+    fi
 
     # Install to ~/.local/bin
     mkdir -p "$HOME/.local/bin"
-    cp opencode "$HOME/.local/bin/opencode"
+    if ! cp opencode "$HOME/.local/bin/opencode"; then
+        log_error "Failed to copy opencode to ~/.local/bin"
+        cd "$PROJECT_DIR"
+        return 1
+    fi
     chmod +x "$HOME/.local/bin/opencode"
 
-    export PATH="$HOME/.local/bin:$PATH"
+    # Verify installation
+    if [[ ! -x "$HOME/.local/bin/opencode" ]]; then
+        log_error "opencode not found at ~/.local/bin/opencode after install"
+        cd "$PROJECT_DIR"
+        return 1
+    fi
+
+    log_info "OpenCode binary installed to ~/.local/bin/opencode"
+
+    # Ensure ~/.local/bin is in PATH (persisted to shell rc)
+    ensure_local_bin_in_path
 
     cd "$PROJECT_DIR"
 
     if command_exists opencode; then
         log_info "OpenCode built and installed successfully"
     else
-        log_warn "OpenCode built but ~/.local/bin may not be in PATH"
+        log_warn "OpenCode installed but you may need to restart your shell for PATH changes to take effect"
     fi
 }
 
@@ -229,22 +310,40 @@ check_all_deps() {
     log_info "Checking dependencies..."
     echo
 
-    check_curl
+    if ! check_curl; then
+        log_error "Failed to install curl"
+        return 1
+    fi
     echo
 
-    check_jq
+    if ! check_jq; then
+        log_error "Failed to install jq"
+        return 1
+    fi
     echo
 
-    check_go
+    if ! check_go; then
+        log_error "Failed to install Go"
+        return 1
+    fi
     echo
 
-    check_bun
+    if ! check_bun; then
+        log_error "Failed to install Bun"
+        return 1
+    fi
     echo
 
-    build_opencode
+    if ! build_opencode; then
+        log_error "Failed to build/install OpenCode"
+        return 1
+    fi
     echo
 
-    build_oh_my_opencode
+    if ! build_oh_my_opencode; then
+        log_error "Failed to install oh-my-opencode"
+        return 1
+    fi
     echo
 
     log_info "All dependencies checked/installed successfully"
