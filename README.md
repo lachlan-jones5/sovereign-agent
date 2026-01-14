@@ -27,10 +27,10 @@ OPENROUTER_API_KEY=sk-or-v1-... bash <(curl -fsSL https://raw.githubusercontent.
 
 ```bash
 # Tunnel laptop → Pi (forward)
-ssh -L 8081:127.0.0.1:8081 pi@your-relay.example.com -N &
+ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -L 8081:127.0.0.1:8081 pi@your-relay.example.com -N &
 
 # Tunnel laptop → Work VM (reverse)
-ssh -R 8081:localhost:8081 workvm -N &
+ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -R 8081:localhost:8081 workvm -N &
 ```
 
 ### 3. Install client (Work VM)
@@ -64,8 +64,8 @@ If your dev environment is inside a container, you need one more tunnel from the
 # Inside container: find host IP
 HOST_IP=$(ip route | grep default | awk '{print $3}')
 
-# Create tunnel to host
-ssh -L 8081:127.0.0.1:8081 youruser@$HOST_IP -N &
+# Create persistent tunnel to host (stays alive until cancelled)
+ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -L 8081:127.0.0.1:8081 youruser@$HOST_IP -N &
 
 # Then install
 curl -fsSL http://localhost:8081/setup | bash
