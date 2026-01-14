@@ -20,6 +20,31 @@ RELAY_PORT=8081 \
 curl -fsSL https://raw.githubusercontent.com/lachlan-jones5/sovereign-agent/master/scripts/setup-relay.sh | bash
 ```
 
+## Client Installation with Tier Selection
+
+When installing the client (on the Client VM), you can select a model tier:
+
+```bash
+# Default (frugal tier) - ~$20/month, best value
+curl -fsSL http://localhost:8081/setup | bash
+
+# Free tier - $0/month, uses only free models
+curl -fsSL http://localhost:8081/setup | TIER=free bash
+
+# Premium tier - best quality, higher cost
+curl -fsSL http://localhost:8081/setup | TIER=premium bash
+```
+
+### Tier Comparison
+
+| Tier | Monthly Cost | Primary Models | Use Case |
+|------|--------------|----------------|----------|
+| `free` | $0 | DeepSeek R1:free, Devstral:free, Qwen3-Coder:free | Learning, experimentation, budget-constrained |
+| `frugal` | ~$20 | DeepSeek V3.2, GPT-4o-mini, Claude Haiku | Daily development (recommended) |
+| `premium` | ~$100+ | Claude Opus 4.5, Claude Sonnet 4.5, o3 | Complex projects, maximum quality |
+
+See [Model Selection Guide](MODELS.md) for detailed model information per tier.
+
 ## Manual Setup
 
 ### 1. Clone the Repository

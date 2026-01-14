@@ -35,9 +35,28 @@ ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -R 8081:localhost:8081 de
 
 ### 3. Install client (Client VM)
 
+The default installation uses the **frugal** tier (~$20/month). You can select a different tier:
+
 ```bash
+# Default (frugal tier) - ~$20/month, DeepSeek V3.2 + Claude Haiku
 curl -fsSL http://localhost:8081/setup | bash
+
+# Free tier - $0/month, uses only free models (DeepSeek R1:free, Devstral:free, etc.)
+curl -fsSL http://localhost:8081/setup | TIER=free bash
+
+# Premium tier - best quality, Claude Opus/Sonnet 4.5, higher cost
+curl -fsSL http://localhost:8081/setup | TIER=premium bash
 ```
+
+**Tier Comparison:**
+
+| Tier | Cost/Month | Primary Model | Best For |
+|------|------------|---------------|----------|
+| `free` | $0 | DeepSeek R1:free | Learning, experimentation |
+| `frugal` | ~$20 | DeepSeek V3.2 | Daily development (recommended) |
+| `premium` | ~$100+ | Claude Opus 4.5 | Complex projects, max quality |
+
+See [Model Selection Guide](docs/MODELS.md) for detailed model information.
 
 ### 4. Run OpenCode
 
@@ -110,7 +129,9 @@ Or use `--network host` when starting the container (simplest, but less isolated
 |------|---------|
 | Setup relay (interactive) | `bash <(curl -fsSL .../scripts/setup-relay.sh)` |
 | Setup relay (with key) | `OPENROUTER_API_KEY=... bash <(curl -fsSL .../scripts/setup-relay.sh)` |
-| Install client | `curl -fsSL http://localhost:8081/setup \| bash` |
+| Install client (frugal) | `curl -fsSL http://localhost:8081/setup \| bash` |
+| Install client (free) | `curl -fsSL http://localhost:8081/setup \| TIER=free bash` |
+| Install client (premium) | `curl -fsSL http://localhost:8081/setup \| TIER=premium bash` |
 | Check relay health | `curl http://localhost:8081/health` |
 | View relay stats | `curl http://localhost:8081/stats` |
 

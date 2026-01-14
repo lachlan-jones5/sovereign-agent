@@ -344,18 +344,27 @@ rm -f "\$BUNDLE_TMP"
 
 # Create client config (always overwrite for fresh relay client setup)
 echo "Creating relay client config..."
+
+# Tier selection (free, frugal, premium) - default: frugal
+TIER="\${TIER:-frugal}"
+
+# Validate tier
+case "\$TIER" in
+    free|frugal|premium)
+        echo "Using tier: \$TIER"
+        ;;
+    *)
+        echo "Warning: Unknown tier '\$TIER', defaulting to 'frugal'"
+        TIER="frugal"
+        ;;
+esac
+
 cat > config.json <<CONFIGEOF
 {
   "openrouter_api_key": "",
   "site_url": "https://github.com/lachlan-jones5/sovereign-agent",
   "site_name": "SovereignAgent",
-
-  "models": {
-    "orchestrator": "deepseek/deepseek-r1",
-    "planner": "anthropic/claude-sonnet-4.5",
-    "librarian": "google/gemini-2.5-flash",
-    "fallback": "meta-llama/llama-3.3-70b-instruct"
-  },
+  "tier": "\$TIER",
 
   "relay": {
     "enabled": true,

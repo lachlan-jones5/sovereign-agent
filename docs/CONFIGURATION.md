@@ -2,6 +2,37 @@
 
 Complete reference for all configuration options.
 
+## Model Tiers
+
+Sovereign Agent uses a tier-based model configuration system. Set the tier in `config.json`:
+
+```json
+{
+  "tier": "frugal"
+}
+```
+
+### Available Tiers
+
+| Tier | Cost/Month | Description |
+|------|------------|-------------|
+| `free` | $0 | Uses only free models (DeepSeek R1:free, Devstral:free, etc.) |
+| `frugal` | ~$20 | Balanced value with DeepSeek V3.2, GPT-4o-mini, Claude Haiku |
+| `premium` | ~$100+ | Best quality with Claude Opus 4.5, Sonnet 4.5, o3 |
+
+The tier determines which OpenCode configuration template is used. See [Model Selection Guide](MODELS.md) for detailed model assignments per tier.
+
+### Selecting a Tier During Installation
+
+```bash
+# Via the relay setup script
+curl -fsSL http://localhost:8081/setup | TIER=free bash
+
+# Or set in config.json before running install.sh
+echo '{"tier": "premium", ...}' > config.json
+./install.sh
+```
+
 ## config.json
 
 ### Required Fields
@@ -24,24 +55,16 @@ Note: `openrouter_api_key` not required for relay client mode.
 
 ### Models
 
-| Role | Purpose | Recommended |
-|------|---------|-------------|
-| `orchestrator` | Main coding agent | claude-sonnet-4.5, deepseek-r1 |
-| `planner` | Task planning | claude-sonnet-4.5 |
-| `librarian` | Code search, docs | gemini-2.5-flash |
-| `fallback` | Backup model | llama-3.3-70b-instruct |
+Models are configured automatically based on your selected tier. The tier templates define optimal model assignments for each agent role.
 
-### Agent-to-Role Mapping
+| Role | Purpose | Free Tier | Frugal Tier | Premium Tier |
+|------|---------|-----------|-------------|--------------|
+| Primary agents | User-facing work | DeepSeek R1:free | DeepSeek V3.2 | Claude Opus 4.5 |
+| Coding agents | Code generation | Devstral:free | GPT-4o-mini | Claude Sonnet 4.5 |
+| Review agents | Security analysis | Qwen3-Coder:free | Claude Haiku 4.5 | Claude Haiku 4.5 |
+| Utility agents | Summaries, titles | Llama 3.3:free | Llama 3.3 | Llama 3.3 |
 
-| Agent | Role |
-|-------|------|
-| Sisyphus | orchestrator |
-| oracle | planner |
-| librarian | librarian |
-| explore | librarian |
-| frontend-ui-ux-engineer | orchestrator |
-| document-writer | librarian |
-| multimodal-looker | librarian |
+See [Model Selection Guide](MODELS.md) for complete model assignments and pricing.
 
 ### Relay Settings
 
