@@ -254,8 +254,12 @@ build_opencode() {
     
     # Create a wrapper script that runs opencode via bun
     # Use full path to bun since PATH may not be set up yet
+    # Also export PATH so child processes can find bun
     cat > "$HOME/.local/bin/opencode" << 'WRAPPER'
 #!/usr/bin/env bash
+# Ensure bun is in PATH for this script and all child processes
+export PATH="$HOME/.bun/bin:$HOME/.local/bin:$PATH"
+
 # Find bun - check common locations
 if [[ -x "$HOME/.bun/bin/bun" ]]; then
     BUN="$HOME/.bun/bin/bun"

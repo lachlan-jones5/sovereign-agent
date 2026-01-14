@@ -631,7 +631,14 @@ echo
 echo "--- OpenCode Wrapper Tests ---"
 echo
 
-# Test 28: opencode wrapper uses full bun path
+# Test 28: opencode wrapper exports PATH with bun
+if grep -q 'export PATH.*\.bun' "$LIB_DIR/check-deps.sh"; then
+    pass "opencode wrapper exports PATH with ~/.bun/bin"
+else
+    fail "opencode wrapper should export PATH with ~/.bun/bin for child processes"
+fi
+
+# Test 29: opencode wrapper uses full bun path
 if grep -q '\.bun/bin/bun\|HOME.*\.bun.*bun' "$LIB_DIR/check-deps.sh"; then
     pass "opencode wrapper uses full bun path (~/.bun/bin/bun)"
 else
