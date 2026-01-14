@@ -72,7 +72,7 @@ generate_from_template() {
     site_name=$(get_config_value "$config_file" '.site_name' 'SovereignAgent')
     
     local orchestrator_model
-    orchestrator_model=$(get_config_value "$config_file" '.models.orchestrator' 'deepseek/deepseek-v3')
+    orchestrator_model=$(get_config_value "$config_file" '.models.orchestrator' 'deepseek/deepseek-v3.2')
     
     local planner_model
     planner_model=$(get_config_value "$config_file" '.models.planner' 'anthropic/claude-opus-4.5')

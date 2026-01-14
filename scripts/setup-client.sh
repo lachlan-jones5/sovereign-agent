@@ -57,7 +57,7 @@ else
   "site_name": "SovereignAgent",
 
   "models": {
-    "orchestrator": "deepseek/deepseek-r1",
+    "orchestrator": "deepseek/deepseek-v3.2",
     "planner": "anthropic/claude-sonnet-4.5",
     "librarian": "google/gemini-2.5-flash",
     "genius": "anthropic/claude-opus-4.5",
