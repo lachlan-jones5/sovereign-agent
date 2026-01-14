@@ -26,7 +26,7 @@
 //    - Prevents stale file content from polluting context
 //    - Safe to enable for most workflows
 //
-// 5. NUDGE FREQUENCY (tools.nudgeFrequency)
+// 5. NUDGE FREQUENCY (tools.settings.nudgeFrequency)
 //    - Every N tool calls, agent is reminded to prune proactively
 //    - Lower values = more frequent nudges, more aggressive pruning
 //    - Default: 10 - periodic reminders without being intrusive
@@ -42,6 +42,7 @@
 // - Documentation work: turnProtection=3, nudgeFrequency=20
 
 {
+  "$schema": "https://raw.githubusercontent.com/Opencode-DCP/opencode-dynamic-context-pruning/master/dcp.schema.json",
   "enabled": true,
   "debug": false,
   "pruneNotification": "minimal",
@@ -49,17 +50,32 @@
     "enabled": true,
     "turns": {{DCP_TURN_PROTECTION}}
   },
+  "protectedFilePatterns": [],
+  "tools": {
+    "settings": {
+      "nudgeEnabled": true,
+      "nudgeFrequency": {{DCP_NUDGE_FREQUENCY}},
+      "protectedTools": ["task", "plan", "user_feedback"]
+    },
+    "discard": {
+      "enabled": true
+    },
+    "extract": {
+      "enabled": true,
+      "showDistillation": false
+    }
+  },
   "strategies": {
-    "deduplication": true,
-    "supersedeWrites": true,
+    "deduplication": {
+      "enabled": true,
+      "protectedTools": []
+    },
+    "supersedeWrites": {
+      "enabled": true
+    },
     "purgeErrors": {
       "enabled": true,
       "turns": {{DCP_ERROR_RETENTION_TURNS}}
     }
-  },
-  "tools": {
-    "nudgeEnabled": true,
-    "nudgeFrequency": {{DCP_NUDGE_FREQUENCY}},
-    "protectedTools": ["task", "plan", "user_feedback"]
   }
 }

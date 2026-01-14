@@ -352,7 +352,7 @@ cat > config.json <<CONFIGEOF
 
   "models": {
     "orchestrator": "deepseek/deepseek-r1",
-    "planner": "anthropic/claude-sonnet-4",
+    "planner": "anthropic/claude-sonnet-4.5",
     "librarian": "google/gemini-2.5-flash",
     "fallback": "meta-llama/llama-3.3-70b-instruct"
   },

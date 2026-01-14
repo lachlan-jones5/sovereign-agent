@@ -12,8 +12,8 @@ Complete reference for all configuration options.
   "site_url": "https://github.com/yourusername/sovereign-agent",
   "site_name": "SovereignAgent",
   "models": {
-    "orchestrator": "anthropic/claude-sonnet-4",
-    "planner": "anthropic/claude-sonnet-4",
+    "orchestrator": "anthropic/claude-sonnet-4.5",
+    "planner": "anthropic/claude-sonnet-4.5",
     "librarian": "google/gemini-2.5-flash",
     "fallback": "meta-llama/llama-3.3-70b-instruct"
   }
@@ -26,8 +26,8 @@ Note: `openrouter_api_key` not required for relay client mode.
 
 | Role | Purpose | Recommended |
 |------|---------|-------------|
-| `orchestrator` | Main coding agent | claude-sonnet-4, deepseek-r1 |
-| `planner` | Task planning | claude-sonnet-4 |
+| `orchestrator` | Main coding agent | claude-sonnet-4.5, deepseek-r1 |
+| `planner` | Task planning | claude-sonnet-4.5 |
 | `librarian` | Code search, docs | gemini-2.5-flash |
 | `fallback` | Backup model | llama-3.3-70b-instruct |
 
@@ -128,8 +128,8 @@ Note: `openrouter_api_key` not required for relay client mode.
   "site_url": "https://example.com",
   "site_name": "MyAgent",
   "models": {
-    "orchestrator": "anthropic/claude-sonnet-4",
-    "planner": "anthropic/claude-sonnet-4",
+    "orchestrator": "anthropic/claude-sonnet-4.5",
+    "planner": "anthropic/claude-sonnet-4.5",
     "librarian": "google/gemini-2.5-flash",
     "fallback": "meta-llama/llama-3.3-70b-instruct"
   },
@@ -149,8 +149,8 @@ Note: `openrouter_api_key` not required for relay client mode.
   "site_url": "https://example.com",
   "site_name": "MyAgent",
   "models": {
-    "orchestrator": "anthropic/claude-sonnet-4",
-    "planner": "anthropic/claude-sonnet-4",
+    "orchestrator": "anthropic/claude-sonnet-4.5",
+    "planner": "anthropic/claude-sonnet-4.5",
     "librarian": "google/gemini-2.5-flash",
     "fallback": "meta-llama/llama-3.3-70b-instruct"
   },
@@ -170,8 +170,8 @@ Note: `openrouter_api_key` not required for relay client mode.
   "site_url": "https://example.com",
   "site_name": "MyAgent",
   "models": {
-    "orchestrator": "anthropic/claude-sonnet-4",
-    "planner": "anthropic/claude-sonnet-4",
+    "orchestrator": "anthropic/claude-sonnet-4.5",
+    "planner": "anthropic/claude-sonnet-4.5",
     "librarian": "google/gemini-2.5-flash",
     "fallback": "meta-llama/llama-3.3-70b-instruct"
   },
