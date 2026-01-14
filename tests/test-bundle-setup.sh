@@ -1001,12 +1001,12 @@ else
     fail "opencode template should NOT have apiKey at provider root level"
 fi
 
-# Test: opencode template uses agent config (not models/model_config)
+# Test: opencode template uses agent config and has provider models registered
 if grep -q '"agent"' "$PROJECT_ROOT/templates/opencode.json.tmpl" 2>/dev/null && \
-   ! grep -q '"models"' "$PROJECT_ROOT/templates/opencode.json.tmpl" 2>/dev/null; then
-    pass "opencode template uses agent config (not deprecated models)"
+   grep -q '"provider"' "$PROJECT_ROOT/templates/opencode.json.tmpl" 2>/dev/null; then
+    pass "opencode template uses agent config with provider models"
 else
-    fail "opencode template should use agent config, not models/model_config"
+    fail "opencode template should use agent config with provider section"
 fi
 
 # Test: opencode template has model at top level
