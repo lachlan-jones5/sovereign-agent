@@ -876,6 +876,48 @@ else
 fi
 
 # ============================================
+# Relay Bundle Validation Logic
+# ============================================
+echo ""
+echo "--- Relay Bundle Validation Logic ---"
+
+# Test: relay checks for .git before trying git submodule update
+if grep -q 'test -d .git\|\.git.*exists\|isGitRepo' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "relay checks for .git before git submodule update"
+else
+    fail "relay should check for .git before attempting git submodule update"
+fi
+
+# Test: relay has different error messages for git vs Docker environments
+if grep -q 'Docker\|docker' "$PROJECT_ROOT/relay/main.ts" && \
+   grep -q 'SSH to the relay\|git submodule' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "relay has different error messages for git vs Docker environments"
+else
+    fail "relay should have different error handling for git vs Docker"
+fi
+
+# Test: relay Docker error suggests --no-cache rebuild
+if grep -q '\-\-no-cache' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "relay Docker error suggests --no-cache rebuild"
+else
+    fail "relay Docker error should suggest --no-cache rebuild"
+fi
+
+# Test: relay validates vendor/opencode/go.mod exists
+if grep -q 'vendor/opencode/go.mod' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "relay validates vendor/opencode/go.mod exists"
+else
+    fail "relay should validate vendor/opencode/go.mod exists"
+fi
+
+# Test: relay validates vendor/oh-my-opencode/package.json exists
+if grep -q 'vendor/oh-my-opencode/package.json' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "relay validates vendor/oh-my-opencode/package.json exists"
+else
+    fail "relay should validate vendor/oh-my-opencode/package.json exists"
+fi
+
+# ============================================
 # Bundle Contents Static Verification
 # ============================================
 echo ""

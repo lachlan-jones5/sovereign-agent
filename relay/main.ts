@@ -438,27 +438,48 @@ echo ""
         if (vendorCheck.exitCode !== 0 || vendorCheck.stdout.includes("No such file")) {
           log("error", `Vendor submodules are empty: ${vendorCheck.stdout} ${vendorCheck.stderr}`);
           
-          // Try one more time with verbose output
-          const retryResult = await exec(
-            "git submodule update --init --recursive 2>&1",
-            REPO_PATH
-          );
-          log("info", `Retry submodule update: ${retryResult.stdout} ${retryResult.stderr}`);
+          // Check if we have a .git directory (not present in Docker)
+          const hasGit = await exec("test -d .git && echo yes || echo no", REPO_PATH);
+          const isGitRepo = hasGit.stdout.trim() === "yes";
           
-          // Check again
-          const vendorCheck2 = await exec(
-            "ls vendor/opencode/go.mod vendor/oh-my-opencode/package.json 2>&1",
-            REPO_PATH
-          );
-          if (vendorCheck2.exitCode !== 0 || vendorCheck2.stdout.includes("No such file")) {
+          if (isGitRepo) {
+            // Try git submodule update (only works if .git exists)
+            const retryResult = await exec(
+              "git submodule update --init --recursive 2>&1",
+              REPO_PATH
+            );
+            log("info", `Retry submodule update: ${retryResult.stdout} ${retryResult.stderr}`);
+            
+            // Check again
+            const vendorCheck2 = await exec(
+              "ls vendor/opencode/go.mod vendor/oh-my-opencode/package.json 2>&1",
+              REPO_PATH
+            );
+            if (vendorCheck2.exitCode !== 0 || vendorCheck2.stdout.includes("No such file")) {
+              return new Response(
+                JSON.stringify({ 
+                  error: "Vendor submodules are not populated", 
+                  details: "SSH to the relay server and run: cd ~/sovereign-agent && git submodule update --init --recursive",
+                  repo_path: REPO_PATH,
+                  stdout: vendorCheck2.stdout,
+                  stderr: vendorCheck2.stderr,
+                  retry_output: retryResult.stdout + retryResult.stderr
+                }),
+                {
+                  status: 500,
+                  headers: { "Content-Type": "application/json" },
+                }
+              );
+            }
+          } else {
+            // No .git directory (Docker environment) - can't retry, just fail with helpful message
             return new Response(
               JSON.stringify({ 
-                error: "Vendor submodules are not populated", 
-                details: "SSH to the relay server and run: cd ~/sovereign-agent && git submodule update --init --recursive",
+                error: "Vendor directories are empty", 
+                details: "Docker build may have failed to clone vendor repos. Rebuild with: docker compose -f docker-compose.relay.yml up -d --build --no-cache",
                 repo_path: REPO_PATH,
-                stdout: vendorCheck2.stdout,
-                stderr: vendorCheck2.stderr,
-                retry_output: retryResult.stdout + retryResult.stderr
+                stdout: vendorCheck.stdout,
+                stderr: vendorCheck.stderr
               }),
               {
                 status: 500,
