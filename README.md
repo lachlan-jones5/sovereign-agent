@@ -64,14 +64,34 @@ If your dev environment is inside a container, you need one more tunnel from the
 # Inside container: find host IP
 HOST_IP=$(ip route | grep default | awk '{print $3}')
 
-# Create persistent tunnel to host (stays alive until cancelled)
-ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -L 8081:127.0.0.1:8081 youruser@$HOST_IP -N &
+# Create persistent tunnel to host using a foreground process
+# Run this in a separate terminal/tmux pane, or use the background version below
+ssh -o ServerAliveInterval=10 -o ServerAliveCountMax=3 -o ExitOnForwardFailure=yes \
+    -L 8081:127.0.0.1:8081 youruser@$HOST_IP -N
+
+# Or run in background with auto-reconnect loop:
+while true; do
+    ssh -o ServerAliveInterval=10 -o ServerAliveCountMax=3 -o ExitOnForwardFailure=yes \
+        -L 8081:127.0.0.1:8081 youruser@$HOST_IP -N
+    echo "Tunnel died, reconnecting in 2s..."
+    sleep 2
+done &
 
 # Then install
 curl -fsSL http://localhost:8081/setup | bash
 ```
 
-Or use `--network host` when starting the container.
+**Tip:** For the most reliable tunnel, run it in a tmux/screen session or use `autossh`:
+```bash
+# Install autossh (if available)
+sudo apt install autossh  # Debian/Ubuntu
+
+# Auto-reconnecting tunnel
+autossh -M 0 -o ServerAliveInterval=10 -o ServerAliveCountMax=3 \
+    -L 8081:127.0.0.1:8081 youruser@$HOST_IP -N &
+```
+
+Or use `--network host` when starting the container (simplest, but less isolated).
 
 ## Documentation
 
