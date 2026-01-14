@@ -25,9 +25,12 @@ WORKDIR /app
 COPY . .
 
 # Clone vendor submodules (since .git is not copied)
-RUN mkdir -p vendor && \
+# Remove any empty directories first, then clone fresh
+# Note: oh-my-opencode default branch is 'dev', we need 'master' for our changes
+RUN rm -rf vendor/opencode vendor/oh-my-opencode && \
+    mkdir -p vendor && \
     git clone --depth 1 https://github.com/lachlan-jones5/opencode.git vendor/opencode && \
-    git clone --depth 1 https://github.com/lachlan-jones5/oh-my-opencode.git vendor/oh-my-opencode && \
+    git clone --depth 1 --branch master https://github.com/lachlan-jones5/oh-my-opencode.git vendor/oh-my-opencode && \
     rm -rf vendor/opencode/.git vendor/oh-my-opencode/.git
 
 # Create minimal package.json for relay
