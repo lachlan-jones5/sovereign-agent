@@ -307,9 +307,18 @@ build_oh_my_opencode() {
 
     # Install dependencies
     bun install
-
+    
     # Build the CLI first
-    bun run build
+    if ! bun run build; then
+        log_error "Failed to build oh-my-opencode CLI"
+        return 1
+    fi
+    
+    # Verify the CLI was built
+    if [[ ! -f "dist/cli/index.js" ]]; then
+        log_error "CLI build did not produce dist/cli/index.js"
+        return 1
+    fi
     
     # Run the install CLI command (not a package.json script)
     bun run dist/cli/index.js install --no-tui --claude=no --chatgpt=no --gemini=yes

@@ -673,7 +673,7 @@ fi
 
 # Test 32: oh-my-opencode install is preceded by build step
 # The CLI needs to be built first before running dist/cli/index.js
-if grep -B5 'dist/cli/index.js install' "$LIB_DIR/check-deps.sh" | grep -q 'bun run build'; then
+if grep -B15 'dist/cli/index.js install' "$LIB_DIR/check-deps.sh" | grep -q 'bun run build'; then
     pass "oh-my-opencode builds CLI before running install command"
 else
     fail "oh-my-opencode should run 'bun run build' before 'dist/cli/index.js install'"
