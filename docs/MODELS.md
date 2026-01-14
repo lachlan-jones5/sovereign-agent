@@ -118,6 +118,8 @@ Escape hatch for hard problems - invoke with `@Genius`.
 
 **Agents:** Genius
 
+> **Note:** Claude Sonnet 4 has been deprecated in favor of Claude Sonnet 4.5. Both have identical pricing ($3.00/$15.00 per 1M tokens) and context (1M), but Sonnet 4.5 is the newer, more capable model. Always prefer `claude-sonnet-4.5` over `claude-sonnet-4`.
+
 ### Recommended Options
 
 | Model | Price (in/out) | Context | Best For |
