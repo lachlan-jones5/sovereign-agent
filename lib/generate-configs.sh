@@ -142,10 +142,11 @@ generate_from_template() {
     local relay_base_url
     if [[ "$relay_enabled" == "true" && "$relay_mode" == "client" ]]; then
         # Client mode: point at local relay tunnel
-        relay_base_url="http://localhost:${relay_port}"
+        # Note: OpenRouter SDK expects baseURL to include /api/v1
+        relay_base_url="http://localhost:${relay_port}/api/v1"
     else
         # Server mode or disabled: use OpenRouter directly
-        relay_base_url="https://openrouter.ai"
+        relay_base_url="https://openrouter.ai/api/v1"
     fi
 
     # Bash tool permissions (granular control)
