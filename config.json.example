@@ -4,10 +4,11 @@
   "site_name": "SovereignAgent",
 
   "models": {
-    "orchestrator": "deepseek/deepseek-v3",
-    "planner": "anthropic/claude-opus-4.5",
-    "librarian": "google/gemini-3-flash",
-    "fallback": "meta-llama/llama-3.3-70b-instruct"
+    "orchestrator": "deepseek/deepseek-v3.2",
+    "planner": "deepseek/deepseek-r1-0528",
+    "librarian": "google/gemini-3-flash-preview",
+    "genius": "anthropic/claude-opus-4.5",
+    "fallback": "meta-llama/llama-4-maverick"
   },
 
   "preferences": {
@@ -22,7 +23,8 @@
     "max_tokens": {
       "orchestrator": 32000,
       "planner": 16000,
-      "librarian": 64000
+      "librarian": 64000,
+      "genius": 64000
     }
   },
 

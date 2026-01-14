@@ -109,6 +109,12 @@ validate_config() {
     fi
 
     # Validate optional preferences (set defaults if missing)
+    local genius_model
+    genius_model=$(jq -r '.models.genius // empty' "$config_file")
+    if [[ -z "$genius_model" ]]; then
+        log_warn "models.genius not set, will use default: anthropic/claude-opus-4.5"
+    fi
+    
     local ultrawork_max
     ultrawork_max=$(jq -r '.preferences.ultrawork_max_iterations // empty' "$config_file")
     if [[ -z "$ultrawork_max" ]]; then
