@@ -841,6 +841,41 @@ else
 fi
 
 # ============================================
+# Docker Build Cache Invalidation
+# ============================================
+echo ""
+echo "--- Docker Build Cache Invalidation ---"
+
+# Test: setup-relay.sh uses --build flag for docker compose
+if grep -q 'docker compose.*--build\|--build.*docker compose' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
+    pass "setup-relay.sh uses --build flag for docker compose"
+else
+    fail "setup-relay.sh should use --build flag to ensure fresh build"
+fi
+
+# Test: setup-relay.sh uses --pull always to get latest base image
+if grep -q '\-\-pull always\|--pull=always' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
+    pass "setup-relay.sh uses --pull always to get latest base image"
+else
+    fail "setup-relay.sh should use --pull always to avoid stale images"
+fi
+
+# Test: docker-compose.relay.yml has build context
+if grep -q 'build:' "$PROJECT_ROOT/docker-compose.relay.yml" && \
+   grep -q 'context:' "$PROJECT_ROOT/docker-compose.relay.yml"; then
+    pass "docker-compose.relay.yml has build context"
+else
+    fail "docker-compose.relay.yml should have build context"
+fi
+
+# Test: docker-compose.relay.yml references Dockerfile.relay
+if grep -q 'Dockerfile.relay' "$PROJECT_ROOT/docker-compose.relay.yml"; then
+    pass "docker-compose.relay.yml references Dockerfile.relay"
+else
+    fail "docker-compose.relay.yml should reference Dockerfile.relay"
+fi
+
+# ============================================
 # Bundle Contents Static Verification
 # ============================================
 echo ""

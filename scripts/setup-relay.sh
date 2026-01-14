@@ -143,7 +143,8 @@ fi
 
 if $HAS_DOCKER; then
     echo "Using Docker..."
-    RELAY_HOST=$RELAY_HOST RELAY_PORT=$RELAY_PORT docker compose -f docker-compose.relay.yml up -d
+    # Use --build --no-cache to ensure fresh build with latest code
+    RELAY_HOST=$RELAY_HOST RELAY_PORT=$RELAY_PORT docker compose -f docker-compose.relay.yml up -d --build --pull always
     echo ""
     echo "Relay started! Check status:"
     echo "  docker logs sovereign-relay"
