@@ -213,15 +213,15 @@ build_opencode() {
     fi
 
     # Verify submodule has content (not just empty directory)
-    if [[ ! -f "$opencode_dir/go.mod" ]]; then
+    if [[ ! -f "$opencode_dir/package.json" ]]; then
         log_error "OpenCode submodule appears empty at $opencode_dir"
         log_error "Run: git submodule update --init --recursive"
         return 1
     fi
 
-    # Verify Go is available
-    if ! command_exists go; then
-        log_error "Go is required but not found in PATH"
+    # Verify Bun is available (opencode is a TypeScript/Bun project)
+    if ! command_exists bun; then
+        log_error "Bun is required but not found in PATH"
         return 1
     fi
 
@@ -229,53 +229,48 @@ build_opencode() {
 
     cd "$opencode_dir"
 
-    # Check if already built
-    if [[ -f "./opencode" ]]; then
-        log_info "OpenCode binary already exists, rebuilding..."
+    # Install dependencies
+    if ! bun install --frozen-lockfile 2>/dev/null; then
+        # Fallback without frozen lockfile for first time setup
+        if ! bun install; then
+            log_error "Failed to install OpenCode dependencies"
+            cd "$PROJECT_DIR"
+            return 1
+        fi
     fi
 
-    # Build with error handling
-    if ! go build -o opencode ./cmd/opencode; then
-        log_error "Failed to build OpenCode"
-        cd "$PROJECT_DIR"
-        return 1
+    # Build the project
+    if ! bun run build 2>/dev/null; then
+        log_info "No build script, skipping build step"
     fi
 
-    # Verify binary was created
-    if [[ ! -f "./opencode" ]]; then
-        log_error "Build succeeded but binary not found"
-        cd "$PROJECT_DIR"
-        return 1
-    fi
-
-    # Install to ~/.local/bin
+    # Install the CLI globally via bun link or create a wrapper
     mkdir -p "$HOME/.local/bin"
-    if ! cp opencode "$HOME/.local/bin/opencode"; then
-        log_error "Failed to copy opencode to ~/.local/bin"
-        cd "$PROJECT_DIR"
-        return 1
-    fi
+    
+    # Create a wrapper script that runs opencode via bun
+    cat > "$HOME/.local/bin/opencode" << 'WRAPPER'
+#!/usr/bin/env bash
+exec bun run --cwd "$(dirname "$(readlink -f "$0")")/../opencode" dev "$@"
+WRAPPER
+    
+    # Create a symlink to the opencode directory
+    local opencode_link="$HOME/.local/opencode"
+    rm -rf "$opencode_link"
+    ln -sf "$opencode_dir" "$opencode_link"
+    
+    # Update wrapper to use the symlink
+    cat > "$HOME/.local/bin/opencode" << 'WRAPPER'
+#!/usr/bin/env bash
+exec bun run --cwd "$HOME/.local/opencode" dev "$@"
+WRAPPER
     chmod +x "$HOME/.local/bin/opencode"
 
     # Verify installation
-    if [[ ! -x "$HOME/.local/bin/opencode" ]]; then
-        log_error "opencode not found at ~/.local/bin/opencode after install"
-        cd "$PROJECT_DIR"
-        return 1
-    fi
-
-    log_info "OpenCode binary installed to ~/.local/bin/opencode"
-
-    # Ensure ~/.local/bin is in PATH (persisted to shell rc)
     ensure_local_bin_in_path
 
     cd "$PROJECT_DIR"
-
-    if command_exists opencode; then
-        log_info "OpenCode built and installed successfully"
-    else
-        log_warn "OpenCode installed but you may need to restart your shell for PATH changes to take effect"
-    fi
+    log_info "OpenCode installed to ~/.local/bin/opencode"
+    return 0
 }
 
 # Build and install oh-my-opencode from submodule

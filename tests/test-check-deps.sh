@@ -469,9 +469,9 @@ test_check_bun_ensures_path_if_installed() {
 # Build OpenCode Error Handling Tests
 # ============================================
 
-# Test 23: build_opencode checks for go.mod (empty submodule detection)
-test_build_opencode_checks_gomod() {
-    local name="build_opencode detects empty submodule (missing go.mod)"
+# Test 23: build_opencode checks for package.json (empty submodule detection)
+test_build_opencode_checks_packagejson() {
+    local name="build_opencode detects empty submodule (missing package.json)"
     
     # Create a fake empty submodule directory
     local fake_vendor="$TEST_TMP_DIR/vendor"
@@ -486,26 +486,26 @@ test_build_opencode_checks_gomod() {
     
     VENDOR_DIR="$original_vendor"
     
-    if [[ $exit_code -ne 0 ]] && echo "$output" | grep -qi "empty\|go.mod"; then
+    if [[ $exit_code -ne 0 ]] && echo "$output" | grep -qi "empty\|package.json"; then
         pass "$name"
     else
         fail "$name" "error about empty submodule" "exit=$exit_code output=$output"
     fi
 }
 
-# Test 24: build_opencode checks for Go availability
-test_build_opencode_checks_go() {
-    local name="build_opencode checks for Go in PATH"
+# Test 24: build_opencode checks for Bun availability
+test_build_opencode_checks_bun() {
+    local name="build_opencode checks for Bun in PATH"
     
-    # Create a fake submodule with go.mod
-    local fake_vendor="$TEST_TMP_DIR/vendor_go"
+    # Create a fake submodule with package.json
+    local fake_vendor="$TEST_TMP_DIR/vendor_bun"
     mkdir -p "$fake_vendor/opencode"
-    echo "module test" > "$fake_vendor/opencode/go.mod"
+    echo '{"name": "opencode"}' > "$fake_vendor/opencode/package.json"
     
     local original_vendor="$VENDOR_DIR"
     VENDOR_DIR="$fake_vendor"
     
-    # Hide go from PATH
+    # Hide bun from PATH
     local original_path="$PATH"
     PATH="/usr/bin:/bin"
     
@@ -516,7 +516,7 @@ test_build_opencode_checks_go() {
     VENDOR_DIR="$original_vendor"
     PATH="$original_path"
     
-    if [[ $exit_code -ne 0 ]] && echo "$output" | grep -qi "go.*not found\|go is required"; then
+    if [[ $exit_code -ne 0 ]] && echo "$output" | grep -qi "bun.*not found\|bun is required"; then
         pass "$name"
     else
         fail "$name" "error about Go not found" "exit=$exit_code output=$output"
@@ -621,8 +621,8 @@ test_check_bun_ensures_path_if_installed
 echo
 echo "--- Build Error Handling Tests ---"
 echo
-test_build_opencode_checks_gomod
-test_build_opencode_checks_go
+test_build_opencode_checks_packagejson
+test_build_opencode_checks_bun
 test_build_opencode_returns_nonzero
 test_check_all_deps_fails_on_opencode
 test_check_all_deps_error_message

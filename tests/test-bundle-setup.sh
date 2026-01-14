@@ -183,10 +183,10 @@ else
 fi
 
 # Test: Bundle endpoint verifies vendor submodules have content
-if grep -q 'vendor/opencode/go\.mod\|vendor.*opencode.*go\.mod' "$PROJECT_ROOT/relay/main.ts"; then
-    pass "Bundle endpoint verifies vendor/opencode has content (go.mod)"
+if grep -q 'vendor/opencode/package\.json' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Bundle endpoint verifies vendor/opencode has content (package.json)"
 else
-    fail "Bundle endpoint should verify vendor/opencode has content (go.mod)"
+    fail "Bundle endpoint should verify vendor/opencode has content (package.json)"
 fi
 
 # Test: Bundle endpoint verifies oh-my-opencode has content
@@ -903,11 +903,11 @@ else
     fail "relay Docker error should suggest --no-cache rebuild"
 fi
 
-# Test: relay validates vendor/opencode/go.mod exists
-if grep -q 'vendor/opencode/go.mod' "$PROJECT_ROOT/relay/main.ts"; then
-    pass "relay validates vendor/opencode/go.mod exists"
+# Test: relay validates vendor/opencode/package.json exists
+if grep -q 'vendor/opencode/package.json' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "relay validates vendor/opencode/package.json exists"
 else
-    fail "relay should validate vendor/opencode/go.mod exists"
+    fail "relay should validate vendor/opencode/package.json exists"
 fi
 
 # Test: relay validates vendor/oh-my-opencode/package.json exists
