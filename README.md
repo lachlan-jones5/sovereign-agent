@@ -42,9 +42,10 @@ curl -fsSL http://localhost:8081/setup | bash
 ### 4. Run OpenCode
 
 ```bash
-cd your-project
-opencode
+opencode /absolute/path/to/your-project
 ```
+
+> **Note:** Only absolute paths are supported. Use `opencode $(pwd)` if you want to open the current directory.
 
 ## How It Works
 

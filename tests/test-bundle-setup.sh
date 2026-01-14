@@ -1100,6 +1100,41 @@ else
     fail "explore agent model should have openrouter/ prefix"
 fi
 
+# Test: Metis agent has model configured
+if grep -A2 '"Metis (Plan Consultant)"' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" | grep -q 'openrouter/'; then
+    pass "Metis (Plan Consultant) agent has model configured"
+else
+    fail "Metis (Plan Consultant) agent should have model configured"
+fi
+
+# Test: Momus agent has model configured
+if grep -A2 '"Momus (Plan Reviewer)"' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" | grep -q 'openrouter/'; then
+    pass "Momus (Plan Reviewer) agent has model configured"
+else
+    fail "Momus (Plan Reviewer) agent should have model configured"
+fi
+
+# Test: opencode.json has compaction agent configured
+if grep -A2 '"compaction"' "$PROJECT_ROOT/templates/opencode.json.tmpl" | grep -q 'openrouter/'; then
+    pass "opencode.json has compaction agent configured"
+else
+    fail "opencode.json should have compaction agent configured"
+fi
+
+# Test: opencode.json has title agent using LIBRARIAN (cheap model for simple task)
+if grep -A2 '"title"' "$PROJECT_ROOT/templates/opencode.json.tmpl" | grep -q 'LIBRARIAN_MODEL'; then
+    pass "opencode.json title agent uses LIBRARIAN_MODEL (cost-effective)"
+else
+    fail "opencode.json title agent should use LIBRARIAN_MODEL for cost savings"
+fi
+
+# Test: opencode.json has summary agent using LIBRARIAN (cheap model for simple task)
+if grep -A2 '"summary"' "$PROJECT_ROOT/templates/opencode.json.tmpl" | grep -q 'LIBRARIAN_MODEL'; then
+    pass "opencode.json summary agent uses LIBRARIAN_MODEL (cost-effective)"
+else
+    fail "opencode.json summary agent should use LIBRARIAN_MODEL for cost savings"
+fi
+
 # Test: All agent models use openrouter/ prefix (comprehensive check)
 AGENTS_WITH_MODEL=$(grep -B1 '"model":' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" 2>/dev/null | grep -c '"model":' || echo "0")
 AGENTS_WITH_OPENROUTER=$(grep '"model":.*openrouter/' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" 2>/dev/null | wc -l || echo "0")
@@ -1206,54 +1241,6 @@ if ! grep -q 'dynamic_context_pruning' "$PROJECT_ROOT/templates/oh-my-opencode.j
     pass "DCP config is only in dcp.jsonc, not duplicated in oh-my-opencode.json"
 else
     fail "DCP config should only be in dcp.jsonc, not in oh-my-opencode.json"
-fi
-
-# ============================================
-# OPENCODE_CWD Environment Variable Tests
-# ============================================
-echo ""
-echo "--- OPENCODE_CWD Environment Variable Tests ---"
-
-# Test: Wrapper script sets OPENCODE_CWD
-if grep -q 'OPENCODE_CWD="\$PWD"\|export OPENCODE_CWD' "$PROJECT_ROOT/lib/check-deps.sh" 2>/dev/null; then
-    pass "Wrapper script sets OPENCODE_CWD environment variable"
-else
-    fail "Wrapper script should set OPENCODE_CWD=\$PWD for working directory"
-fi
-
-# Test: Wrapper script exports OPENCODE_CWD
-if grep -q 'export OPENCODE_CWD' "$PROJECT_ROOT/lib/check-deps.sh" 2>/dev/null; then
-    pass "Wrapper script exports OPENCODE_CWD"
-else
-    fail "Wrapper script should export OPENCODE_CWD so opencode can read it"
-fi
-
-# Test: Wrapper script changes to opencode source dir for module resolution
-if grep -q 'cd "\$HOME/.local/opencode"\|cd \$HOME/.local/opencode' "$PROJECT_ROOT/lib/check-deps.sh" 2>/dev/null; then
-    pass "Wrapper script changes to opencode source directory for module resolution"
-else
-    fail "Wrapper script should cd to ~/.local/opencode for node_modules resolution"
-fi
-
-# Test: Opencode run.ts has getWorkingDirectory function
-if grep -q 'getWorkingDirectory\|OPENCODE_CWD' "$PROJECT_ROOT/vendor/opencode/packages/opencode/src/cli/cmd/run.ts" 2>/dev/null; then
-    pass "Opencode run.ts supports OPENCODE_CWD environment variable"
-else
-    fail "Opencode run.ts should have getWorkingDirectory() using OPENCODE_CWD"
-fi
-
-# Test: Opencode run.ts uses getWorkingDirectory for bootstrap
-if grep -q 'bootstrap(getWorkingDirectory()' "$PROJECT_ROOT/vendor/opencode/packages/opencode/src/cli/cmd/run.ts" 2>/dev/null; then
-    pass "Opencode bootstrap uses getWorkingDirectory()"
-else
-    fail "Opencode bootstrap should use getWorkingDirectory() not process.cwd()"
-fi
-
-# Test: Opencode run.ts uses getWorkingDirectory for file path resolution
-if grep -q 'getWorkingDirectory().*filePath\|path.resolve(getWorkingDirectory()' "$PROJECT_ROOT/vendor/opencode/packages/opencode/src/cli/cmd/run.ts" 2>/dev/null; then
-    pass "Opencode uses getWorkingDirectory() for file path resolution"
-else
-    fail "Opencode should use getWorkingDirectory() for resolving file paths"
 fi
 
 # ============================================
