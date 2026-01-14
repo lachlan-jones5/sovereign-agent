@@ -1065,20 +1065,6 @@ else
     fail "Sisyphus agent model should have openrouter/ prefix for OpenRouter API"
 fi
 
-# Test: Genius agent model has openrouter/ prefix
-if grep -A2 '"Genius"' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" | grep -q 'openrouter/'; then
-    pass "Genius agent model has openrouter/ prefix"
-else
-    fail "Genius agent model should have openrouter/ prefix"
-fi
-
-# Test: Genius agent uses GENIUS_MODEL placeholder
-if grep -A2 '"Genius"' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" | grep -q 'GENIUS_MODEL'; then
-    pass "Genius agent uses GENIUS_MODEL placeholder"
-else
-    fail "Genius agent should use GENIUS_MODEL placeholder"
-fi
-
 # Test: oracle agent model has openrouter/ prefix
 if grep -A2 '"oracle"' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" | grep -q 'openrouter/'; then
     pass "oracle agent model has openrouter/ prefix"
@@ -1214,25 +1200,18 @@ else
     fail "generate-configs.sh should deploy dcp.jsonc"
 fi
 
-# Test: Config generation handles GENIUS_MODEL placeholder
-if grep -q 'GENIUS_MODEL' "$PROJECT_ROOT/lib/generate-configs.sh" 2>/dev/null; then
-    pass "generate-configs.sh handles GENIUS_MODEL placeholder"
+# Test: Config generation handles GENIUS_MODEL placeholder (alias to planner for backward compatibility)
+if grep -q 'genius_model' "$PROJECT_ROOT/lib/generate-configs.sh" 2>/dev/null; then
+    pass "generate-configs.sh handles genius_model (defaults to planner)"
 else
-    fail "generate-configs.sh should handle GENIUS_MODEL placeholder"
+    fail "generate-configs.sh should handle genius_model for backward compatibility"
 fi
 
-# Test: Config generation extracts genius model from config
+# Test: Config generation extracts genius model from config (optional override)
 if grep -q '\.models\.genius' "$PROJECT_ROOT/lib/generate-configs.sh" 2>/dev/null; then
     pass "generate-configs.sh extracts genius model from config"
 else
     fail "generate-configs.sh should extract genius model from .models.genius"
-fi
-
-# Test: Setup script config.json has genius model
-if grep -q '"genius"' "$PROJECT_ROOT/scripts/setup-client.sh" 2>/dev/null; then
-    pass "setup-client.sh config.json has genius model"
-else
-    fail "setup-client.sh config.json should have genius model"
 fi
 
 # Test: DCP and oh-my-opencode configs are separate (no duplication)
@@ -1256,8 +1235,8 @@ else
     fail "opencode.json template should register models in provider.openrouter.models"
 fi
 
-# Test: All model tiers are registered in opencode.json provider.models
-for model_tier in ORCHESTRATOR_MODEL PLANNER_MODEL LIBRARIAN_MODEL GENIUS_MODEL FALLBACK_MODEL; do
+# Test: All model tiers are registered in opencode.json provider.models (4-tier system)
+for model_tier in ORCHESTRATOR_MODEL PLANNER_MODEL LIBRARIAN_MODEL FALLBACK_MODEL; do
     if grep -A30 '"openrouter"' "$PROJECT_ROOT/templates/opencode.json.tmpl" 2>/dev/null | grep -q "{{$model_tier}}"; then
         pass "opencode.json registers $model_tier in provider.openrouter.models"
     else
@@ -1271,18 +1250,18 @@ done
 echo ""
 echo "--- Claude 4.5 Model Defaults Tests ---"
 
-# Test: Default genius model is claude-opus-4.5 (not 4)
+# Test: Default planner model is claude-opus-4.5 (not 4)
 if grep -q 'claude-opus-4\.5' "$PROJECT_ROOT/lib/generate-configs.sh" 2>/dev/null; then
-    pass "Default genius model is claude-opus-4.5"
+    pass "Default planner model is claude-opus-4.5"
 else
-    fail "Default genius model should be claude-opus-4.5 (not claude-opus-4)"
+    fail "Default planner model should be claude-opus-4.5 (not claude-opus-4)"
 fi
 
-# Test: setup-client.sh uses claude-opus-4.5 for genius
+# Test: setup-client.sh uses claude-opus-4.5 for planner
 if grep -q 'claude-opus-4\.5' "$PROJECT_ROOT/scripts/setup-client.sh" 2>/dev/null; then
-    pass "setup-client.sh uses claude-opus-4.5 for genius model"
+    pass "setup-client.sh uses claude-opus-4.5 for planner model"
 else
-    fail "setup-client.sh should use claude-opus-4.5 for genius model"
+    fail "setup-client.sh should use claude-opus-4.5 for planner model"
 fi
 
 # Test: No claude-opus-4 (without .5) in lib/generate-configs.sh defaults

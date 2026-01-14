@@ -80,8 +80,9 @@ generate_from_template() {
     local librarian_model
     librarian_model=$(get_config_value "$config_file" '.models.librarian' 'google/gemini-3-flash-preview')
     
+    # Genius defaults to planner model (4-tier system)
     local genius_model
-    genius_model=$(get_config_value "$config_file" '.models.genius' 'anthropic/claude-opus-4.5')
+    genius_model=$(get_config_value "$config_file" '.models.genius' "$planner_model")
     
     local fallback_model
     fallback_model=$(get_config_value "$config_file" '.models.fallback' 'meta-llama/llama-3.3-70b-instruct')
