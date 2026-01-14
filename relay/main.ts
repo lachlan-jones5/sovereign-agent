@@ -226,16 +226,39 @@ fi
 echo "Relay connection OK"
 echo ""
 
-# Handle existing OpenCode installation
+# Handle existing OpenCode installations
+# OpenCode stores config in multiple locations - back them all up
+TIMESTAMP=\$(date +%Y%m%d_%H%M%S)
+
+# ~/.config/opencode - main config directory
 OPENCODE_CONFIG_DIR="\$HOME/.config/opencode"
 if [[ -d "\$OPENCODE_CONFIG_DIR" ]]; then
-    BACKUP_DIR="\$HOME/.config/opencode.backup.\$(date +%Y%m%d_%H%M%S)"
+    BACKUP_DIR="\$HOME/.config/opencode.backup.\$TIMESTAMP"
     echo "Existing OpenCode config found at \$OPENCODE_CONFIG_DIR"
     echo "Backing up to \$BACKUP_DIR..."
     mv "\$OPENCODE_CONFIG_DIR" "\$BACKUP_DIR"
-    echo "Backup complete"
     echo ""
 fi
+
+# ~/.opencode - alternative config location (used by some setups)
+OPENCODE_ALT_DIR="\$HOME/.opencode"
+if [[ -d "\$OPENCODE_ALT_DIR" ]]; then
+    BACKUP_DIR="\$HOME/.opencode.backup.\$TIMESTAMP"
+    echo "Existing OpenCode config found at \$OPENCODE_ALT_DIR"
+    echo "Backing up to \$BACKUP_DIR..."
+    mv "\$OPENCODE_ALT_DIR" "\$BACKUP_DIR"
+    echo ""
+fi
+
+# ~/.local/share/opencode - data directory (sessions, logs)
+# We don't back this up by default as it can be large
+# Uncomment if you want to preserve old sessions:
+# OPENCODE_DATA_DIR="\$HOME/.local/share/opencode"
+# if [[ -d "\$OPENCODE_DATA_DIR" ]]; then
+#     BACKUP_DIR="\$HOME/.local/share/opencode.backup.\$TIMESTAMP"
+#     echo "Backing up data directory to \$BACKUP_DIR..."
+#     mv "\$OPENCODE_DATA_DIR" "\$BACKUP_DIR"
+# fi
 
 # Check for required tools and install if missing FIRST
 echo "Checking dependencies..."

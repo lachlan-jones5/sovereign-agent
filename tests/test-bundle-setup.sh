@@ -562,6 +562,13 @@ else
     fail "Setup script should check for existing OpenCode config"
 fi
 
+# Test: Setup script checks for ~/.opencode alternative location
+if grep -q 'OPENCODE_ALT_DIR\|\.opencode' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Setup script checks for ~/.opencode alternative location"
+else
+    fail "Setup script should check for ~/.opencode alternative location"
+fi
+
 # Test: Setup script backs up existing OpenCode config
 if grep -q 'backup\|Backup\|BACKUP' "$PROJECT_ROOT/relay/main.ts"; then
     pass "Setup script backs up existing OpenCode config"
