@@ -414,9 +414,17 @@ echo ""
       log("info", `REPO_PATH: ${REPO_PATH}`);
       
       try {
-        // Pull latest and update submodules (ignore failures - may not be a git repo or offline)
+        // Pull latest (ignore failures - may not be a git repo or offline)
         await exec("git pull --quiet 2>/dev/null || true", REPO_PATH);
-        await exec("git submodule update --init --recursive --depth 1 2>/dev/null || true", REPO_PATH);
+        
+        // Try to update submodules - this is critical for the bundle to work
+        const submoduleResult = await exec(
+          "git submodule update --init --recursive --depth 1 2>&1",
+          REPO_PATH
+        );
+        if (submoduleResult.exitCode !== 0) {
+          log("warn", `Submodule update had issues: ${submoduleResult.stderr}`);
+        }
         
         // Verify essential files exist
         const checkResult = await exec("ls -la install.sh lib/ relay/ vendor/ 2>&1 || echo 'MISSING FILES'", REPO_PATH);
@@ -429,18 +437,35 @@ echo ""
         );
         if (vendorCheck.exitCode !== 0 || vendorCheck.stdout.includes("No such file")) {
           log("error", `Vendor submodules are empty: ${vendorCheck.stdout} ${vendorCheck.stderr}`);
-          return new Response(
-            JSON.stringify({ 
-              error: "Vendor submodules are not populated", 
-              details: "Run 'git submodule update --init --recursive' on the relay server",
-              stdout: vendorCheck.stdout,
-              stderr: vendorCheck.stderr
-            }),
-            {
-              status: 500,
-              headers: { "Content-Type": "application/json" },
-            }
+          
+          // Try one more time with verbose output
+          const retryResult = await exec(
+            "git submodule update --init --recursive 2>&1",
+            REPO_PATH
           );
+          log("info", `Retry submodule update: ${retryResult.stdout} ${retryResult.stderr}`);
+          
+          // Check again
+          const vendorCheck2 = await exec(
+            "ls vendor/opencode/go.mod vendor/oh-my-opencode/package.json 2>&1",
+            REPO_PATH
+          );
+          if (vendorCheck2.exitCode !== 0 || vendorCheck2.stdout.includes("No such file")) {
+            return new Response(
+              JSON.stringify({ 
+                error: "Vendor submodules are not populated", 
+                details: "SSH to the relay server and run: cd ~/sovereign-agent && git submodule update --init --recursive",
+                repo_path: REPO_PATH,
+                stdout: vendorCheck2.stdout,
+                stderr: vendorCheck2.stderr,
+                retry_output: retryResult.stdout + retryResult.stderr
+              }),
+              {
+                status: 500,
+                headers: { "Content-Type": "application/json" },
+              }
+            );
+          }
         }
         // Get approximate size first (for progress indicator)
         const sizeResult = await exec(

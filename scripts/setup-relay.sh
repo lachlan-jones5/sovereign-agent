@@ -66,6 +66,16 @@ else
     cd "$INSTALL_DIR"
 fi
 
+# Initialize submodules (required for bundle endpoint to work)
+echo "Initializing submodules..."
+git submodule update --init --recursive --depth 1 || {
+    echo ""
+    echo "Warning: Submodule initialization failed."
+    echo "The bundle endpoint will not work until submodules are initialized."
+    echo "Try running: git submodule update --init --recursive"
+    echo ""
+}
+
 # Get API key
 if [[ -f config.json ]] && grep -q '"openrouter_api_key"' config.json; then
     echo "config.json already exists"

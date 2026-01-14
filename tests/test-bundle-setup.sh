@@ -204,7 +204,7 @@ else
 fi
 
 # Test: Bundle endpoint provides fix instructions for empty submodules
-if grep -q 'git submodule update --init --recursive.*relay\|Run.*submodule.*relay server' "$PROJECT_ROOT/relay/main.ts"; then
+if grep -q 'git submodule update --init --recursive.*relay\|SSH to the relay server' "$PROJECT_ROOT/relay/main.ts"; then
     pass "Bundle endpoint provides fix instructions for empty submodules"
 else
     fail "Bundle endpoint should provide fix instructions for empty submodules"
