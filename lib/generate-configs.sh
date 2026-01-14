@@ -81,7 +81,7 @@ generate_from_template() {
     librarian_model=$(get_config_value "$config_file" '.models.librarian' 'google/gemini-3-flash')
     
     local genius_model
-    genius_model=$(get_config_value "$config_file" '.models.genius' 'anthropic/claude-opus-4')
+    genius_model=$(get_config_value "$config_file" '.models.genius' 'anthropic/claude-opus-4.5')
     
     local fallback_model
     fallback_model=$(get_config_value "$config_file" '.models.fallback' 'meta-llama/llama-3.3-70b-instruct')

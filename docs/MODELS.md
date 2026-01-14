@@ -2,6 +2,17 @@
 
 This document provides a comprehensive analysis of available models on OpenRouter and recommendations for each agent role in Sovereign Agent.
 
+> **IMPORTANT: Deprecated Models**
+> 
+> **Never use `claude-opus-4` or `claude-sonnet-4`** - always use `claude-opus-4.5` or `claude-sonnet-4.5` instead.
+> 
+> The 4.5 versions are:
+> - **Cheaper** (same or lower price)
+> - **Better** (newer, more capable)
+> - **Recommended by Anthropic**
+> 
+> All defaults and examples in this repo use the 4.5 versions.
+
 ## Current Default Models
 
 | Role | Model | Price ($/1M tokens) | Context | Usage |
@@ -118,7 +129,7 @@ Escape hatch for hard problems - invoke with `@Genius`.
 
 **Agents:** Genius
 
-> **Note:** Claude Sonnet 4 has been deprecated in favor of Claude Sonnet 4.5. Both have identical pricing ($3.00/$15.00 per 1M tokens) and context (1M), but Sonnet 4.5 is the newer, more capable model. Always prefer `claude-sonnet-4.5` over `claude-sonnet-4`.
+> **Note:** Claude Sonnet 4 and Claude Opus 4 have been deprecated in favor of their 4.5 versions. Both 4.5 versions are cheaper and more capable. Always prefer `claude-sonnet-4.5` over `claude-sonnet-4` and `claude-opus-4.5` over `claude-opus-4`.
 
 ### Recommended Options
 
