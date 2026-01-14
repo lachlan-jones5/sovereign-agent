@@ -38,21 +38,15 @@ fail() {
     ((TESTS_RUN++))
 }
 
-# Create a valid test config
+# Create a valid test config with tier system
 create_test_config() {
     cat > "$TEST_TMP_DIR/config.json" << 'EOF'
 {
   "openrouter_api_key": "sk-or-v1-test-key-12345",
   "site_url": "https://test.example.com",
   "site_name": "TestSite",
-  "models": {
-    "orchestrator": "test/orchestrator-model",
-    "planner": "test/planner-model",
-    "librarian": "test/librarian-model",
-    "fallback": "test/fallback-model"
-  },
+  "tier": "frugal",
   "preferences": {
-    "ultrawork_max_iterations": 75,
     "dcp_turn_protection": 3,
     "dcp_error_retention_turns": 5,
     "dcp_nudge_frequency": 15
@@ -64,39 +58,35 @@ EOF
 # Source the generate script
 source "$LIB_DIR/generate-configs.sh"
 
-# Test 1: generates opencode.json with correct API key
+# Test 1: generates opencode.jsonc with correct API key
 test_opencode_api_key() {
-    local name="opencode.json contains correct API key"
+    local name="opencode.jsonc contains correct API key"
     create_test_config
     local output_dir="$TEST_TMP_DIR/output"
     
     generate_all_configs "$TEST_TMP_DIR/config.json" "$output_dir" >/dev/null 2>&1
     
-    local api_key
-    api_key=$(jq -r '.provider.openrouter.apiKey' "$output_dir/opencode.json")
-    
-    if [[ "$api_key" == "sk-or-v1-test-key-12345" ]]; then
+    # Check for API key using grep (simpler than parsing JSONC)
+    if grep -q 'sk-or-v1-test-key-12345' "$output_dir/opencode.jsonc"; then
         pass "$name"
     else
-        fail "$name" "sk-or-v1-test-key-12345" "$api_key"
+        fail "$name" "sk-or-v1-test-key-12345 in file" "not found"
     fi
 }
 
-# Test 2: generates opencode.json with correct model
-test_opencode_model() {
-    local name="opencode.json contains correct orchestrator model"
+# Test 2: generates opencode.jsonc for frugal tier
+test_opencode_frugal_tier() {
+    local name="opencode.jsonc uses frugal tier template"
     create_test_config
     local output_dir="$TEST_TMP_DIR/output2"
     
     generate_all_configs "$TEST_TMP_DIR/config.json" "$output_dir" >/dev/null 2>&1
     
-    local model
-    model=$(jq -r '.provider.openrouter.model' "$output_dir/opencode.json")
-    
-    if [[ "$model" == "test/orchestrator-model" ]]; then
+    # Check that opencode.jsonc exists and contains frugal-specific model
+    if grep -q 'deepseek/deepseek-v3.2' "$output_dir/opencode.jsonc"; then
         pass "$name"
     else
-        fail "$name" "test/orchestrator-model" "$model"
+        fail "$name" "deepseek/deepseek-v3.2 in config" "not found"
     fi
 }
 
@@ -119,39 +109,35 @@ test_dcp_turn_protection() {
     fi
 }
 
-# Test 4: generates oh-my-opencode.json with correct agent models
-test_omo_agent_models() {
-    local name="oh-my-opencode.json contains correct Sisyphus model"
+# Test 4: copies OpenAgents files
+test_openagents_copied() {
+    local name="OpenAgents agent files copied to config dir"
     create_test_config
     local output_dir="$TEST_TMP_DIR/output4"
     
     generate_all_configs "$TEST_TMP_DIR/config.json" "$output_dir" >/dev/null 2>&1
     
-    local model
-    model=$(jq -r '.agents.Sisyphus.model' "$output_dir/oh-my-opencode.json")
-    
-    if [[ "$model" == "test/orchestrator-model" ]]; then
+    # Check that agent files were copied
+    if [[ -d "$output_dir/.opencode/agent" ]]; then
         pass "$name"
     else
-        fail "$name" "test/orchestrator-model" "$model"
+        fail "$name" ".opencode/agent directory" "not found"
     fi
 }
 
-# Test 5: generates oh-my-opencode.json with correct oracle model
-test_omo_oracle_model() {
-    local name="oh-my-opencode.json contains correct oracle model"
+# Test 5: copies OpenAgents commands
+test_openagents_commands() {
+    local name="OpenAgents command files copied to config dir"
     create_test_config
     local output_dir="$TEST_TMP_DIR/output5"
     
     generate_all_configs "$TEST_TMP_DIR/config.json" "$output_dir" >/dev/null 2>&1
     
-    local model
-    model=$(jq -r '.agents.oracle.model' "$output_dir/oh-my-opencode.json")
-    
-    if [[ "$model" == "test/planner-model" ]]; then
+    # Check that command files were copied
+    if [[ -d "$output_dir/.opencode/command" ]]; then
         pass "$name"
     else
-        fail "$name" "test/planner-model" "$model"
+        fail "$name" ".opencode/command directory" "not found"
     fi
 }
 
@@ -163,13 +149,13 @@ test_backup_existing() {
     mkdir -p "$output_dir"
     
     # Create an existing config
-    echo '{"existing": true}' > "$output_dir/opencode.json"
+    echo '{"existing": true}' > "$output_dir/opencode.jsonc"
     
     generate_all_configs "$TEST_TMP_DIR/config.json" "$output_dir" >/dev/null 2>&1
     
     # Check if backup was created
     local backup_count
-    backup_count=$(ls -1 "$output_dir"/opencode.json.backup.* 2>/dev/null | wc -l)
+    backup_count=$(ls -1 "$output_dir"/opencode.jsonc.backup.* 2>/dev/null | wc -l)
     
     if [[ "$backup_count" -ge 1 ]]; then
         pass "$name"
@@ -178,37 +164,75 @@ test_backup_existing() {
     fi
 }
 
-# Test 7: uses default values when preferences not specified
-test_default_preferences() {
-    local name="Uses default values for missing preferences"
+# Test 7: uses default tier when not specified
+test_default_tier() {
+    local name="Uses default tier (frugal) when not specified"
     
-    # Create config without preferences
+    # Create config without tier
     cat > "$TEST_TMP_DIR/minimal.json" << 'EOF'
 {
   "openrouter_api_key": "sk-or-v1-test-key",
   "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "test/orchestrator-model",
-    "planner": "test/planner-model",
-    "librarian": "test/librarian-model",
-    "fallback": "test/fallback-model"
-  }
+  "site_name": "TestSite"
 }
 EOF
     local output_dir="$TEST_TMP_DIR/output7"
     
     generate_all_configs "$TEST_TMP_DIR/minimal.json" "$output_dir" >/dev/null 2>&1
     
-    # JSONC files have comments, so we need to strip them before parsing with jq
-    local turns
-    turns=$(sed '/^\/\//d' "$output_dir/dcp.jsonc" | jq -r '.turnProtection.turns')
-    
-    # Default is 2
-    if [[ "$turns" == "2" ]]; then
+    # Frugal tier uses DeepSeek V3.2 as the openagent model
+    if grep -q 'deepseek/deepseek-v3.2' "$output_dir/opencode.jsonc"; then
         pass "$name"
     else
-        fail "$name" "2 (default)" "$turns"
+        fail "$name" "frugal tier (deepseek model)" "not found"
+    fi
+}
+
+# Test 8: premium tier uses Claude models
+test_premium_tier() {
+    local name="Premium tier uses Claude models"
+    
+    cat > "$TEST_TMP_DIR/premium.json" << 'EOF'
+{
+  "openrouter_api_key": "sk-or-v1-test-key",
+  "site_url": "https://example.com",
+  "site_name": "TestSite",
+  "tier": "premium"
+}
+EOF
+    local output_dir="$TEST_TMP_DIR/output8"
+    
+    generate_all_configs "$TEST_TMP_DIR/premium.json" "$output_dir" >/dev/null 2>&1
+    
+    # Premium tier uses Claude Sonnet/Opus
+    if grep -q 'anthropic/claude-sonnet-4.5\|anthropic/claude-opus-4.5' "$output_dir/opencode.jsonc"; then
+        pass "$name"
+    else
+        fail "$name" "claude models" "not found"
+    fi
+}
+
+# Test 9: free tier uses free models
+test_free_tier() {
+    local name="Free tier uses free models"
+    
+    cat > "$TEST_TMP_DIR/free.json" << 'EOF'
+{
+  "openrouter_api_key": "sk-or-v1-test-key",
+  "site_url": "https://example.com",
+  "site_name": "TestSite",
+  "tier": "free"
+}
+EOF
+    local output_dir="$TEST_TMP_DIR/output9"
+    
+    generate_all_configs "$TEST_TMP_DIR/free.json" "$output_dir" >/dev/null 2>&1
+    
+    # Free tier uses :free suffix models
+    if grep -q ':free' "$output_dir/opencode.jsonc"; then
+        pass "$name"
+    else
+        fail "$name" ":free models" "not found"
     fi
 }
 
@@ -219,12 +243,14 @@ echo "========================================"
 echo
 
 test_opencode_api_key
-test_opencode_model
+test_opencode_frugal_tier
 test_dcp_turn_protection
-test_omo_agent_models
-test_omo_oracle_model
+test_openagents_copied
+test_openagents_commands
 test_backup_existing
-test_default_preferences
+test_default_tier
+test_premium_tier
+test_free_tier
 
 echo
 echo "========================================"

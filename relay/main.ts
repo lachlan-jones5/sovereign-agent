@@ -431,8 +431,9 @@ echo ""
         log("info", `File check: ${checkResult.stdout.substring(0, 200)}`);
         
         // Verify vendor submodules have actual content (not just empty directories)
+        // OpenAgents uses .opencode/agent directory instead of package.json
         const vendorCheck = await exec(
-          "ls vendor/opencode/package.json vendor/oh-my-opencode/package.json 2>&1",
+          "ls vendor/opencode/package.json vendor/OpenAgents/.opencode/agent 2>&1",
           REPO_PATH
         );
         if (vendorCheck.exitCode !== 0 || vendorCheck.stdout.includes("No such file")) {
@@ -452,7 +453,7 @@ echo ""
             
             // Check again
             const vendorCheck2 = await exec(
-              "ls vendor/opencode/package.json vendor/oh-my-opencode/package.json 2>&1",
+              "ls vendor/opencode/package.json vendor/OpenAgents/.opencode/agent 2>&1",
               REPO_PATH
             );
             if (vendorCheck2.exitCode !== 0 || vendorCheck2.stdout.includes("No such file")) {

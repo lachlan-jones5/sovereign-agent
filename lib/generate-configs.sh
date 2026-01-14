@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 # generate-configs.sh - Generate OpenCode config files from templates
+#
+# Generates tier-based config files for the OpenAgents system.
+# Tiers: free, frugal (default), premium
 
 # Only set -e when run directly, not when sourced
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
@@ -9,6 +12,8 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 TEMPLATES_DIR="$PROJECT_DIR/templates"
+VENDOR_DIR="$PROJECT_DIR/vendor"
+OPENAGENTS_DIR="$VENDOR_DIR/OpenAgents"
 
 # Colors for output
 RED='\033[0;31m'
@@ -71,25 +76,6 @@ generate_from_template() {
     local site_name
     site_name=$(get_config_value "$config_file" '.site_name' 'SovereignAgent')
     
-    local orchestrator_model
-    orchestrator_model=$(get_config_value "$config_file" '.models.orchestrator' 'deepseek/deepseek-v3.2')
-    
-    local planner_model
-    planner_model=$(get_config_value "$config_file" '.models.planner' 'anthropic/claude-opus-4.5')
-    
-    local librarian_model
-    librarian_model=$(get_config_value "$config_file" '.models.librarian' 'google/gemini-3-flash-preview')
-    
-    # Genius defaults to planner model (4-tier system)
-    local genius_model
-    genius_model=$(get_config_value "$config_file" '.models.genius' "$planner_model")
-    
-    local fallback_model
-    fallback_model=$(get_config_value "$config_file" '.models.fallback' 'meta-llama/llama-3.3-70b-instruct')
-    
-    local ultrawork_max
-    ultrawork_max=$(get_config_value "$config_file" '.preferences.ultrawork_max_iterations' '50')
-    
     local dcp_turn_protection
     dcp_turn_protection=$(get_config_value "$config_file" '.preferences.dcp_turn_protection' '2')
     
@@ -98,19 +84,6 @@ generate_from_template() {
     
     local dcp_nudge_frequency
     dcp_nudge_frequency=$(get_config_value "$config_file" '.preferences.dcp_nudge_frequency' '10')
-
-    # Security settings
-    local provider_whitelist
-    provider_whitelist=$(jq -c '.security.provider_whitelist // ["DeepInfra", "Fireworks", "Together"]' "$config_file")
-    
-    local orchestrator_max_tokens
-    orchestrator_max_tokens=$(get_config_value "$config_file" '.security.max_tokens.orchestrator' '32000')
-    
-    local planner_max_tokens
-    planner_max_tokens=$(get_config_value "$config_file" '.security.max_tokens.planner' '16000')
-    
-    local librarian_max_tokens
-    librarian_max_tokens=$(get_config_value "$config_file" '.security.max_tokens.librarian' '64000')
 
     # Plugin version pinning
     local pin_versions
@@ -121,13 +94,6 @@ generate_from_template() {
         dcp_version=$(get_config_value "$config_file" '.plugins.opencode_dcp_version' '0.5.0')
     else
         dcp_version="latest"
-    fi
-    
-    local oh_my_opencode_version
-    if [[ "$pin_versions" == "true" ]]; then
-        oh_my_opencode_version=$(get_config_value "$config_file" '.plugins.oh_my_opencode_version' '1.0.0')
-    else
-        oh_my_opencode_version="latest"
     fi
 
     # Relay configuration
@@ -150,46 +116,14 @@ generate_from_template() {
         relay_base_url="https://openrouter.ai/api/v1"
     fi
 
-    # Bash tool permissions (granular control)
-    local bash_permission_mode
-    bash_permission_mode=$(get_config_value "$config_file" '.tool_permissions.bash.mode' 'blocklist')
-    
-    local bash_allowed_commands
-    bash_allowed_commands=$(jq -c '.tool_permissions.bash.allowed_commands // []' "$config_file")
-    
-    local bash_blocked_commands
-    bash_blocked_commands=$(jq -c '.tool_permissions.bash.blocked_commands // ["rm -rf /", "mkfs", "dd", ":(){ :|:& };:"]' "$config_file")
-    
-    local bash_blocked_patterns
-    bash_blocked_patterns=$(jq -c '.tool_permissions.bash.blocked_patterns // []' "$config_file")
-    
-    # Escape backslashes for bash variable substitution
-    # jq output has proper JSON escaping, but bash substitution eats backslashes
-    bash_blocked_patterns="${bash_blocked_patterns//\\/\\\\}"
-
     # Replace placeholders
     content="${content//\{\{OPENROUTER_API_KEY\}\}/$openrouter_api_key}"
     content="${content//\{\{SITE_URL\}\}/$site_url}"
     content="${content//\{\{SITE_NAME\}\}/$site_name}"
-    content="${content//\{\{ORCHESTRATOR_MODEL\}\}/$orchestrator_model}"
-    content="${content//\{\{PLANNER_MODEL\}\}/$planner_model}"
-    content="${content//\{\{LIBRARIAN_MODEL\}\}/$librarian_model}"
-    content="${content//\{\{GENIUS_MODEL\}\}/$genius_model}"
-    content="${content//\{\{FALLBACK_MODEL\}\}/$fallback_model}"
-    content="${content//\{\{ULTRAWORK_MAX_ITERATIONS\}\}/$ultrawork_max}"
     content="${content//\{\{DCP_TURN_PROTECTION\}\}/$dcp_turn_protection}"
     content="${content//\{\{DCP_ERROR_RETENTION_TURNS\}\}/$dcp_error_retention}"
     content="${content//\{\{DCP_NUDGE_FREQUENCY\}\}/$dcp_nudge_frequency}"
-    content="${content//\{\{PROVIDER_WHITELIST\}\}/$provider_whitelist}"
-    content="${content//\{\{ORCHESTRATOR_MAX_TOKENS\}\}/$orchestrator_max_tokens}"
-    content="${content//\{\{PLANNER_MAX_TOKENS\}\}/$planner_max_tokens}"
-    content="${content//\{\{LIBRARIAN_MAX_TOKENS\}\}/$librarian_max_tokens}"
     content="${content//\{\{DCP_VERSION\}\}/$dcp_version}"
-    content="${content//\{\{OH_MY_OPENCODE_VERSION\}\}/$oh_my_opencode_version}"
-    content="${content//\{\{BASH_PERMISSION_MODE\}\}/$bash_permission_mode}"
-    content="${content//\{\{BASH_ALLOWED_COMMANDS\}\}/$bash_allowed_commands}"
-    content="${content//\{\{BASH_BLOCKED_COMMANDS\}\}/$bash_blocked_commands}"
-    content="${content//\{\{BASH_BLOCKED_PATTERNS\}\}/$bash_blocked_patterns}"
     content="${content//\{\{RELAY_BASE_URL\}\}/$relay_base_url}"
 
     # Create output directory if needed
@@ -200,6 +134,50 @@ generate_from_template() {
     # Write output file
     echo "$content" > "$output_file"
     log_info "Generated: $output_file"
+}
+
+# Copy OpenAgents files to destination
+copy_openagents_files() {
+    local dest_dir="$1"
+    local opencode_dir="$dest_dir/.opencode"
+    
+    if [[ ! -d "$OPENAGENTS_DIR/.opencode" ]]; then
+        log_error "OpenAgents .opencode directory not found: $OPENAGENTS_DIR/.opencode"
+        return 1
+    fi
+    
+    # Create destination .opencode directory
+    mkdir -p "$opencode_dir"
+    
+    # Copy agent files
+    if [[ -d "$OPENAGENTS_DIR/.opencode/agent" ]]; then
+        cp -r "$OPENAGENTS_DIR/.opencode/agent" "$opencode_dir/"
+        log_info "Copied agents to $opencode_dir/agent"
+    fi
+    
+    # Copy command files
+    if [[ -d "$OPENAGENTS_DIR/.opencode/command" ]]; then
+        cp -r "$OPENAGENTS_DIR/.opencode/command" "$opencode_dir/"
+        log_info "Copied commands to $opencode_dir/command"
+    fi
+    
+    # Copy context files
+    if [[ -d "$OPENAGENTS_DIR/.opencode/context" ]]; then
+        cp -r "$OPENAGENTS_DIR/.opencode/context" "$opencode_dir/"
+        log_info "Copied context to $opencode_dir/context"
+    fi
+    
+    # Copy skill files
+    if [[ -d "$OPENAGENTS_DIR/.opencode/skill" ]]; then
+        cp -r "$OPENAGENTS_DIR/.opencode/skill" "$opencode_dir/"
+        log_info "Copied skills to $opencode_dir/skill"
+    fi
+    
+    # Copy prompts files
+    if [[ -d "$OPENAGENTS_DIR/.opencode/prompts" ]]; then
+        cp -r "$OPENAGENTS_DIR/.opencode/prompts" "$opencode_dir/"
+        log_info "Copied prompts to $opencode_dir/prompts"
+    fi
 }
 
 # Generate all config files
@@ -217,6 +195,21 @@ generate_all_configs() {
         return 1
     fi
 
+    # Get the tier from config (default: frugal)
+    local tier
+    tier=$(get_config_value "$config_file" '.tier' 'frugal')
+    
+    # Validate tier
+    case "$tier" in
+        free|frugal|premium)
+            log_info "Using tier: $tier"
+            ;;
+        *)
+            log_warn "Unknown tier '$tier', defaulting to 'frugal'"
+            tier="frugal"
+            ;;
+    esac
+
     log_info "Generating config files..."
     log_info "OpenCode config directory: $opencode_config_dir"
     echo
@@ -225,10 +218,10 @@ generate_all_configs() {
     mkdir -p "$opencode_config_dir"
 
     # Backup existing configs
-    if [[ -f "$opencode_config_dir/opencode.json" ]]; then
-        local backup_file="$opencode_config_dir/opencode.json.backup.$(date +%Y%m%d%H%M%S)"
-        cp "$opencode_config_dir/opencode.json" "$backup_file"
-        log_warn "Backed up existing opencode.json to $backup_file"
+    if [[ -f "$opencode_config_dir/opencode.jsonc" ]]; then
+        local backup_file="$opencode_config_dir/opencode.jsonc.backup.$(date +%Y%m%d%H%M%S)"
+        cp "$opencode_config_dir/opencode.jsonc" "$backup_file"
+        log_warn "Backed up existing opencode.jsonc to $backup_file"
     fi
 
     if [[ -f "$opencode_config_dir/dcp.jsonc" ]]; then
@@ -237,27 +230,26 @@ generate_all_configs() {
         log_warn "Backed up existing dcp.jsonc to $backup_file"
     fi
 
-    if [[ -f "$opencode_config_dir/oh-my-opencode.json" ]]; then
-        local backup_file="$opencode_config_dir/oh-my-opencode.json.backup.$(date +%Y%m%d%H%M%S)"
-        cp "$opencode_config_dir/oh-my-opencode.json" "$backup_file"
-        log_warn "Backed up existing oh-my-opencode.json to $backup_file"
+    # Generate opencode.jsonc from tier template
+    local tier_template="$TEMPLATES_DIR/opencode.${tier}.jsonc.tmpl"
+    if [[ ! -f "$tier_template" ]]; then
+        log_error "Tier template not found: $tier_template"
+        return 1
     fi
-
-    # Generate configs
+    
     generate_from_template \
-        "$TEMPLATES_DIR/opencode.json.tmpl" \
-        "$opencode_config_dir/opencode.json" \
+        "$tier_template" \
+        "$opencode_config_dir/opencode.jsonc" \
         "$config_file"
 
+    # Generate dcp.jsonc
     generate_from_template \
         "$TEMPLATES_DIR/dcp.jsonc.tmpl" \
         "$opencode_config_dir/dcp.jsonc" \
         "$config_file"
 
-    generate_from_template \
-        "$TEMPLATES_DIR/oh-my-opencode.json.tmpl" \
-        "$opencode_config_dir/oh-my-opencode.json" \
-        "$config_file"
+    # Copy OpenAgents files to config directory
+    copy_openagents_files "$opencode_config_dir"
 
     # Copy .opencodeignore template to user's home directory
     if [[ -f "$TEMPLATES_DIR/opencodeignore.tmpl" ]]; then
@@ -273,6 +265,7 @@ generate_all_configs() {
 
     echo
     log_info "All config files generated successfully"
+    log_info "Tier: $tier"
 }
 
 # Run if executed directly

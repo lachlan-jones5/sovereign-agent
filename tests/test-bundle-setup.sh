@@ -64,11 +64,11 @@ else
     fail "install.sh should check vendor/opencode exists"
 fi
 
-# Test: install.sh checks VENDOR_DIR/oh-my-opencode exists
-if grep -q 'VENDOR_DIR.*oh-my-opencode\|vendor.*oh-my-opencode' "$PROJECT_ROOT/install.sh"; then
-    pass "install.sh checks vendor/oh-my-opencode exists"
+# Test: install.sh checks VENDOR_DIR/OpenAgents exists
+if grep -q 'VENDOR_DIR.*OpenAgents\|vendor.*OpenAgents' "$PROJECT_ROOT/install.sh"; then
+    pass "install.sh checks vendor/OpenAgents exists"
 else
-    fail "install.sh should check vendor/oh-my-opencode exists"
+    fail "install.sh should check vendor/OpenAgents exists"
 fi
 
 # Test: install.sh has error message for missing vendor dirs
@@ -112,11 +112,11 @@ else
     fail "Dockerfile.relay should clone opencode repo"
 fi
 
-# Test: Dockerfile clones oh-my-opencode repo
-if grep -q 'git clone.*oh-my-opencode' "$PROJECT_ROOT/Dockerfile.relay"; then
-    pass "Dockerfile.relay clones oh-my-opencode repo"
+# Test: Dockerfile clones OpenAgents repo
+if grep -q 'git clone.*OpenAgents' "$PROJECT_ROOT/Dockerfile.relay"; then
+    pass "Dockerfile.relay clones OpenAgents repo"
 else
-    fail "Dockerfile.relay should clone oh-my-opencode repo"
+    fail "Dockerfile.relay should clone OpenAgents repo"
 fi
 
 # Test: Dockerfile uses shallow clone (--depth 1)
@@ -127,7 +127,7 @@ else
 fi
 
 # Test: Dockerfile clones to vendor directory
-if grep -q 'vendor/opencode\|vendor/oh-my-opencode' "$PROJECT_ROOT/Dockerfile.relay"; then
+if grep -q 'vendor/opencode\|vendor/OpenAgents' "$PROJECT_ROOT/Dockerfile.relay"; then
     pass "Dockerfile.relay clones to vendor directory"
 else
     fail "Dockerfile.relay should clone to vendor directory"
@@ -149,7 +149,7 @@ fi
 
 # Test: Dockerfile uses correct GitHub URLs
 if grep -q 'github.com.*opencode' "$PROJECT_ROOT/Dockerfile.relay" && \
-   grep -q 'github.com.*oh-my-opencode' "$PROJECT_ROOT/Dockerfile.relay"; then
+   grep -q 'github.com.*OpenAgents' "$PROJECT_ROOT/Dockerfile.relay"; then
     pass "Dockerfile.relay uses correct GitHub URLs"
 else
     fail "Dockerfile.relay should use correct GitHub URLs for submodules"
@@ -189,11 +189,11 @@ else
     fail "Bundle endpoint should verify vendor/opencode has content (package.json)"
 fi
 
-# Test: Bundle endpoint verifies oh-my-opencode has content
-if grep -q 'vendor/oh-my-opencode/package\.json\|oh-my-opencode.*package\.json' "$PROJECT_ROOT/relay/main.ts"; then
-    pass "Bundle endpoint verifies vendor/oh-my-opencode has content (package.json)"
+# Test: Bundle endpoint verifies OpenAgents has content
+if grep -q 'vendor/OpenAgents/package\.json\|OpenAgents.*package\.json' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "Bundle endpoint verifies vendor/OpenAgents has content (package.json)"
 else
-    fail "Bundle endpoint should verify vendor/oh-my-opencode has content (package.json)"
+    fail "Bundle endpoint should verify vendor/OpenAgents has content (package.json)"
 fi
 
 # Test: Bundle endpoint returns 500 error if submodules are empty
@@ -820,24 +820,24 @@ echo ""
 echo "--- Dockerfile.relay Handles Existing Vendor Directories ---"
 
 # Test: Dockerfile.relay removes existing vendor directories before clone
-if grep -q 'rm -rf vendor/opencode vendor/oh-my-opencode' "$PROJECT_ROOT/Dockerfile.relay"; then
+if grep -q 'rm -rf vendor/opencode vendor/OpenAgents' "$PROJECT_ROOT/Dockerfile.relay"; then
     pass "Dockerfile.relay removes existing vendor directories before clone"
 else
     fail "Dockerfile.relay should remove existing vendor directories before clone"
 fi
 
-# Test: Dockerfile.relay clones oh-my-opencode from master branch
-if grep -q '\-\-branch master.*oh-my-opencode\|oh-my-opencode.*--branch master' "$PROJECT_ROOT/Dockerfile.relay"; then
-    pass "Dockerfile.relay clones oh-my-opencode from master branch"
+# Test: Dockerfile.relay clones OpenAgents (no special branch needed - uses default)
+if grep -q 'git clone.*OpenAgents' "$PROJECT_ROOT/Dockerfile.relay"; then
+    pass "Dockerfile.relay clones OpenAgents"
 else
-    fail "Dockerfile.relay should clone oh-my-opencode from master branch (not dev)"
+    fail "Dockerfile.relay should clone OpenAgents"
 fi
 
-# Test: Dockerfile.relay has comment explaining master branch requirement
-if grep -q "default branch is 'dev'\|need 'master'" "$PROJECT_ROOT/Dockerfile.relay"; then
-    pass "Dockerfile.relay documents why master branch is needed"
+# Test: Dockerfile.relay clones from forked repo
+if grep -q 'github.com/lachlan-jones5/OpenAgents' "$PROJECT_ROOT/Dockerfile.relay"; then
+    pass "Dockerfile.relay clones from forked OpenAgents repo"
 else
-    fail "Dockerfile.relay should document why master branch is needed"
+    fail "Dockerfile.relay should clone from forked OpenAgents repo"
 fi
 
 # ============================================
@@ -910,11 +910,11 @@ else
     fail "relay should validate vendor/opencode/package.json exists"
 fi
 
-# Test: relay validates vendor/oh-my-opencode/package.json exists
-if grep -q 'vendor/oh-my-opencode/package.json' "$PROJECT_ROOT/relay/main.ts"; then
-    pass "relay validates vendor/oh-my-opencode/package.json exists"
+# Test: relay validates vendor/OpenAgents/.opencode/agent exists
+if grep -q 'vendor/OpenAgents/.opencode/agent' "$PROJECT_ROOT/relay/main.ts"; then
+    pass "relay validates vendor/OpenAgents/.opencode/agent exists"
 else
-    fail "relay should validate vendor/oh-my-opencode/package.json exists"
+    fail "relay should validate vendor/OpenAgents/.opencode/agent exists"
 fi
 
 # ============================================
@@ -972,184 +972,138 @@ else
     fail "vendor/opencode should exist or be defined in .gitmodules"
 fi
 
-# Test: vendor/oh-my-opencode exists or is submodule placeholder
-if [[ -d "$PROJECT_ROOT/vendor/oh-my-opencode" ]] || [[ -f "$PROJECT_ROOT/.gitmodules" ]]; then
-    pass "vendor/oh-my-opencode exists or defined in .gitmodules"
+# Test: vendor/OpenAgents exists or is submodule placeholder
+if [[ -d "$PROJECT_ROOT/vendor/OpenAgents" ]] || [[ -f "$PROJECT_ROOT/.gitmodules" ]]; then
+    pass "vendor/OpenAgents exists or defined in .gitmodules"
 else
-    fail "vendor/oh-my-opencode should exist or be defined in .gitmodules"
+    fail "vendor/OpenAgents should exist or be defined in .gitmodules"
 fi
 
 # ============================================
-# OpenCode Config Template Tests
+# OpenCode Config Template Tests (Tier-based)
 # ============================================
 echo ""
 echo "--- OpenCode Config Template Tests ---"
 
-# Test: opencode template uses options.apiKey (not apiKey at root)
-if grep -q '"options"' "$PROJECT_ROOT/templates/opencode.json.tmpl" 2>/dev/null && \
-   grep -q '"apiKey"' "$PROJECT_ROOT/templates/opencode.json.tmpl" 2>/dev/null; then
-    pass "opencode template uses options.apiKey (not root level)"
+# Test: frugal tier template exists
+if [[ -f "$PROJECT_ROOT/templates/opencode.frugal.jsonc.tmpl" ]]; then
+    pass "frugal tier template exists"
 else
-    fail "opencode template should use options.apiKey under provider"
+    fail "frugal tier template should exist"
 fi
 
-# Test: opencode template does NOT have apiKey at provider root
-if ! grep -q '"openrouter".*{[^}]*"apiKey"' "$PROJECT_ROOT/templates/opencode.json.tmpl" 2>/dev/null || \
-   grep -q '"options"' "$PROJECT_ROOT/templates/opencode.json.tmpl" 2>/dev/null; then
-    pass "opencode template apiKey is under options (not at provider root)"
+# Test: premium tier template exists  
+if [[ -f "$PROJECT_ROOT/templates/opencode.premium.jsonc.tmpl" ]]; then
+    pass "premium tier template exists"
 else
-    fail "opencode template should NOT have apiKey at provider root level"
+    fail "premium tier template should exist"
 fi
 
-# Test: opencode template uses agent config and has provider models registered
-if grep -q '"agent"' "$PROJECT_ROOT/templates/opencode.json.tmpl" 2>/dev/null && \
-   grep -q '"provider"' "$PROJECT_ROOT/templates/opencode.json.tmpl" 2>/dev/null; then
-    pass "opencode template uses agent config with provider models"
+# Test: free tier template exists
+if [[ -f "$PROJECT_ROOT/templates/opencode.free.jsonc.tmpl" ]]; then
+    pass "free tier template exists"
 else
-    fail "opencode template should use agent config with provider section"
+    fail "free tier template should exist"
 fi
 
-# Test: opencode template has model at top level
-if grep -q '"model":' "$PROJECT_ROOT/templates/opencode.json.tmpl" 2>/dev/null; then
-    pass "opencode template has model at top level"
+# Test: frugal template uses options.apiKey (not apiKey at root)
+if grep -q '"options"' "$PROJECT_ROOT/templates/opencode.frugal.jsonc.tmpl" 2>/dev/null && \
+   grep -q '"apiKey"' "$PROJECT_ROOT/templates/opencode.frugal.jsonc.tmpl" 2>/dev/null; then
+    pass "frugal template uses options.apiKey (not root level)"
 else
-    fail "opencode template should have model at top level"
+    fail "frugal template should use options.apiKey under provider"
 fi
 
-# Test: opencode template has $schema
-if grep -q '\$schema' "$PROJECT_ROOT/templates/opencode.json.tmpl" 2>/dev/null; then
-    pass "opencode template has \$schema for validation"
+# Test: frugal template has agent config and provider section
+if grep -q '"agent"' "$PROJECT_ROOT/templates/opencode.frugal.jsonc.tmpl" 2>/dev/null && \
+   grep -q '"provider"' "$PROJECT_ROOT/templates/opencode.frugal.jsonc.tmpl" 2>/dev/null; then
+    pass "frugal template uses agent config with provider section"
 else
-    fail "opencode template should have \$schema"
+    fail "frugal template should use agent config with provider section"
 fi
 
-# Test: opencode template has DCP plugin with valid version
-if grep -q '@tarquinen/opencode-dcp@[0-9]' "$PROJECT_ROOT/templates/opencode.json.tmpl" 2>/dev/null; then
-    pass "opencode template has DCP plugin with pinned version"
+# Test: frugal template has $schema
+if grep -q '\$schema' "$PROJECT_ROOT/templates/opencode.frugal.jsonc.tmpl" 2>/dev/null; then
+    pass "frugal template has \$schema for validation"
 else
-    fail "opencode template should have DCP plugin with version (not template var)"
+    fail "frugal template should have \$schema"
 fi
 
-# Test: opencode template has oh-my-opencode plugin with valid version
-if grep -q 'oh-my-opencode@[0-9]' "$PROJECT_ROOT/templates/opencode.json.tmpl" 2>/dev/null; then
-    pass "opencode template has oh-my-opencode plugin with pinned version"
+# Test: frugal template has DCP plugin with version placeholder
+if grep -q '@tarquinen/opencode-dcp@{{DCP_VERSION}}' "$PROJECT_ROOT/templates/opencode.frugal.jsonc.tmpl" 2>/dev/null; then
+    pass "frugal template has DCP plugin with version placeholder"
 else
-    fail "opencode template should have oh-my-opencode plugin with version"
+    fail "frugal template should have DCP plugin with version placeholder"
+fi
+
+# Test: frugal template uses DeepSeek V3.2 (cost-effective)
+if grep -q 'deepseek/deepseek-v3.2' "$PROJECT_ROOT/templates/opencode.frugal.jsonc.tmpl" 2>/dev/null; then
+    pass "frugal template uses DeepSeek V3.2 (cost-effective)"
+else
+    fail "frugal template should use DeepSeek V3.2 for cost savings"
+fi
+
+# Test: premium template uses Claude models
+if grep -q 'anthropic/claude-sonnet-4.5\|anthropic/claude-opus-4.5' "$PROJECT_ROOT/templates/opencode.premium.jsonc.tmpl" 2>/dev/null; then
+    pass "premium template uses Claude models"
+else
+    fail "premium template should use Claude models"
+fi
+
+# Test: free template uses free models (:free suffix)
+if grep -q ':free' "$PROJECT_ROOT/templates/opencode.free.jsonc.tmpl" 2>/dev/null; then
+    pass "free template uses free models (:free suffix)"
+else
+    fail "free template should use free models with :free suffix"
+fi
+
+# Test: all templates have openrouter/ prefix for models
+FRUGAL_MODELS=$(grep -c 'openrouter/' "$PROJECT_ROOT/templates/opencode.frugal.jsonc.tmpl" 2>/dev/null || echo "0")
+if [[ "$FRUGAL_MODELS" -gt 10 ]]; then
+    pass "frugal template has multiple openrouter/ model references ($FRUGAL_MODELS)"
+else
+    fail "frugal template should have many openrouter/ model references (got $FRUGAL_MODELS)"
 fi
 
 # ============================================
-# oh-my-opencode Config Template Tests
+# OpenAgents Submodule Tests
 # ============================================
 echo ""
-echo "--- oh-my-opencode Config Template Tests ---"
+echo "--- OpenAgents Submodule Tests ---"
 
-# Test: oh-my-opencode template does NOT have DCP config (DCP uses its own file)
-if ! grep -q 'dynamic_context_pruning' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" 2>/dev/null; then
-    pass "oh-my-opencode template does NOT have DCP config (uses separate dcp.jsonc)"
+# Test: OpenAgents submodule directory exists  
+if [[ -d "$PROJECT_ROOT/vendor/OpenAgents" ]]; then
+    pass "OpenAgents submodule directory exists"
 else
-    fail "oh-my-opencode template should NOT have dynamic_context_pruning (DCP uses dcp.jsonc)"
+    fail "OpenAgents submodule directory should exist"
 fi
 
-# Test: oh-my-opencode template does NOT have experimental section
-if ! grep -q '"experimental"' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" 2>/dev/null; then
-    pass "oh-my-opencode template does NOT have experimental section"
+# Test: OpenAgents has .opencode/agent directory
+if [[ -d "$PROJECT_ROOT/vendor/OpenAgents/.opencode/agent" ]]; then
+    pass "OpenAgents has .opencode/agent directory"
 else
-    fail "oh-my-opencode template should NOT have experimental section (DCP config is separate)"
+    fail "OpenAgents should have .opencode/agent directory"
 fi
 
-# Test: Sisyphus agent model has openrouter/ prefix
-if grep -q '"Sisyphus"' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" 2>/dev/null && \
-   grep -A2 '"Sisyphus"' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" | grep -q 'openrouter/'; then
-    pass "Sisyphus agent model has openrouter/ prefix"
+# Test: OpenAgents has .opencode/command directory
+if [[ -d "$PROJECT_ROOT/vendor/OpenAgents/.opencode/command" ]]; then
+    pass "OpenAgents has .opencode/command directory"
 else
-    fail "Sisyphus agent model should have openrouter/ prefix for OpenRouter API"
+    fail "OpenAgents should have .opencode/command directory"
 fi
 
-# Test: oracle agent model has openrouter/ prefix
-if grep -A2 '"oracle"' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" | grep -q 'openrouter/'; then
-    pass "oracle agent model has openrouter/ prefix"
+# Test: OpenAgents has core agents (openagent.md)
+if [[ -f "$PROJECT_ROOT/vendor/OpenAgents/.opencode/agent/core/openagent.md" ]]; then
+    pass "OpenAgents has core/openagent.md agent"
 else
-    fail "oracle agent model should have openrouter/ prefix"
+    fail "OpenAgents should have core/openagent.md agent"
 fi
 
-# Test: librarian agent model has openrouter/ prefix
-if grep -A2 '"librarian"' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" | grep -q 'openrouter/'; then
-    pass "librarian agent model has openrouter/ prefix"
+# Test: OpenAgents has opencoder agent
+if [[ -f "$PROJECT_ROOT/vendor/OpenAgents/.opencode/agent/core/opencoder.md" ]]; then
+    pass "OpenAgents has core/opencoder.md agent"
 else
-    fail "librarian agent model should have openrouter/ prefix"
-fi
-
-# Test: explore agent model has openrouter/ prefix
-if grep -A2 '"explore"' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" | grep -q 'openrouter/'; then
-    pass "explore agent model has openrouter/ prefix"
-else
-    fail "explore agent model should have openrouter/ prefix"
-fi
-
-# Test: Metis agent has model configured
-if grep -A2 '"Metis (Plan Consultant)"' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" | grep -q 'openrouter/'; then
-    pass "Metis (Plan Consultant) agent has model configured"
-else
-    fail "Metis (Plan Consultant) agent should have model configured"
-fi
-
-# Test: Momus agent has model configured
-if grep -A2 '"Momus (Plan Reviewer)"' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" | grep -q 'openrouter/'; then
-    pass "Momus (Plan Reviewer) agent has model configured"
-else
-    fail "Momus (Plan Reviewer) agent should have model configured"
-fi
-
-# Test: opencode.json has compaction agent configured
-if grep -A2 '"compaction"' "$PROJECT_ROOT/templates/opencode.json.tmpl" | grep -q 'openrouter/'; then
-    pass "opencode.json has compaction agent configured"
-else
-    fail "opencode.json should have compaction agent configured"
-fi
-
-# Test: opencode.json has title agent using LIBRARIAN (cheap model for simple task)
-if grep -A2 '"title"' "$PROJECT_ROOT/templates/opencode.json.tmpl" | grep -q 'LIBRARIAN_MODEL'; then
-    pass "opencode.json title agent uses LIBRARIAN_MODEL (cost-effective)"
-else
-    fail "opencode.json title agent should use LIBRARIAN_MODEL for cost savings"
-fi
-
-# Test: opencode.json has summary agent using LIBRARIAN (cheap model for simple task)
-if grep -A2 '"summary"' "$PROJECT_ROOT/templates/opencode.json.tmpl" | grep -q 'LIBRARIAN_MODEL'; then
-    pass "opencode.json summary agent uses LIBRARIAN_MODEL (cost-effective)"
-else
-    fail "opencode.json summary agent should use LIBRARIAN_MODEL for cost savings"
-fi
-
-# Test: All agent models use openrouter/ prefix (comprehensive check)
-AGENTS_WITH_MODEL=$(grep -B1 '"model":' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" 2>/dev/null | grep -c '"model":' || echo "0")
-AGENTS_WITH_OPENROUTER=$(grep '"model":.*openrouter/' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" 2>/dev/null | wc -l || echo "0")
-if [[ "$AGENTS_WITH_MODEL" -eq "$AGENTS_WITH_OPENROUTER" ]] && [[ "$AGENTS_WITH_MODEL" -gt 0 ]]; then
-    pass "All $AGENTS_WITH_MODEL agent models have openrouter/ prefix"
-else
-    fail "All agent models should have openrouter/ prefix ($AGENTS_WITH_OPENROUTER/$AGENTS_WITH_MODEL have it)"
-fi
-
-# Test: oh-my-opencode template has sisyphus_agent config
-if grep -q '"sisyphus_agent"' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" 2>/dev/null; then
-    pass "oh-my-opencode template has sisyphus_agent config section"
-else
-    fail "oh-my-opencode template should have sisyphus_agent config"
-fi
-
-# Test: oh-my-opencode template has max_iterations setting
-if grep -q 'max_iterations' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" 2>/dev/null; then
-    pass "oh-my-opencode template has max_iterations setting"
-else
-    fail "oh-my-opencode template should have max_iterations setting"
-fi
-
-# Test: oh-my-opencode template has tool_permissions for bash
-if grep -q '"tool_permissions"' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" 2>/dev/null && \
-   grep -q '"bash"' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" 2>/dev/null; then
-    pass "oh-my-opencode template has tool_permissions for bash"
-else
-    fail "oh-my-opencode template should have tool_permissions for bash"
+    fail "OpenAgents should have core/opencoder.md agent"
 fi
 
 # ============================================
@@ -1200,49 +1154,56 @@ else
     fail "generate-configs.sh should deploy dcp.jsonc"
 fi
 
-# Test: Config generation handles GENIUS_MODEL placeholder (alias to planner for backward compatibility)
-if grep -q 'genius_model' "$PROJECT_ROOT/lib/generate-configs.sh" 2>/dev/null; then
-    pass "generate-configs.sh handles genius_model (defaults to planner)"
+# Test: Config generation uses tier system
+if grep -q 'tier' "$PROJECT_ROOT/lib/generate-configs.sh" 2>/dev/null; then
+    pass "generate-configs.sh uses tier system"
 else
-    fail "generate-configs.sh should handle genius_model for backward compatibility"
+    fail "generate-configs.sh should use tier system"
 fi
 
-# Test: Config generation extracts genius model from config (optional override)
-if grep -q '\.models\.genius' "$PROJECT_ROOT/lib/generate-configs.sh" 2>/dev/null; then
-    pass "generate-configs.sh extracts genius model from config"
+# Test: Config generation copies OpenAgents files
+if grep -q 'copy_openagents_files\|OpenAgents' "$PROJECT_ROOT/lib/generate-configs.sh" 2>/dev/null; then
+    pass "generate-configs.sh copies OpenAgents files"
 else
-    fail "generate-configs.sh should extract genius model from .models.genius"
+    fail "generate-configs.sh should copy OpenAgents files"
 fi
 
-# Test: DCP and oh-my-opencode configs are separate (no duplication)
-if ! grep -q 'dynamic_context_pruning' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" 2>/dev/null && \
+# Test: DCP config is separate from tier templates
+if ! grep -q 'dynamic_context_pruning' "$PROJECT_ROOT/templates/opencode.frugal.jsonc.tmpl" 2>/dev/null && \
    [[ -f "$PROJECT_ROOT/templates/dcp.jsonc.tmpl" ]]; then
-    pass "DCP config is only in dcp.jsonc, not duplicated in oh-my-opencode.json"
+    pass "DCP config is only in dcp.jsonc, not in tier templates"
 else
-    fail "DCP config should only be in dcp.jsonc, not in oh-my-opencode.json"
+    fail "DCP config should only be in dcp.jsonc, not in tier templates"
 fi
 
 # ============================================
-# OpenRouter Model Registration Tests
+# Tier Template Model Tests
 # ============================================
 echo ""
-echo "--- OpenRouter Model Registration Tests ---"
+echo "--- Tier Template Model Tests ---"
 
-# Test: opencode.json template has models in provider.openrouter section
-if grep -A20 '"openrouter"' "$PROJECT_ROOT/templates/opencode.json.tmpl" 2>/dev/null | grep -q '"models"'; then
-    pass "opencode.json template has models in provider.openrouter section"
+# Test: frugal template uses cost-effective models
+if grep -q 'deepseek/deepseek-v3.2' "$PROJECT_ROOT/templates/opencode.frugal.jsonc.tmpl" 2>/dev/null && \
+   grep -q 'openai/gpt-4o-mini' "$PROJECT_ROOT/templates/opencode.frugal.jsonc.tmpl" 2>/dev/null; then
+    pass "frugal template uses cost-effective models (DeepSeek V3.2, GPT-4o-mini)"
 else
-    fail "opencode.json template should register models in provider.openrouter.models"
+    fail "frugal template should use cost-effective models"
 fi
 
-# Test: All model tiers are registered in opencode.json provider.models (4-tier system)
-for model_tier in ORCHESTRATOR_MODEL PLANNER_MODEL LIBRARIAN_MODEL FALLBACK_MODEL; do
-    if grep -A30 '"openrouter"' "$PROJECT_ROOT/templates/opencode.json.tmpl" 2>/dev/null | grep -q "{{$model_tier}}"; then
-        pass "opencode.json registers $model_tier in provider.openrouter.models"
-    else
-        fail "opencode.json should register {{$model_tier}} in provider.openrouter.models"
-    fi
-done
+# Test: premium template uses Claude Opus for opencoder (user requirement)
+if grep -q 'anthropic/claude-opus-4.5' "$PROJECT_ROOT/templates/opencode.premium.jsonc.tmpl" 2>/dev/null; then
+    pass "premium template uses Claude Opus 4.5"
+else
+    fail "premium template should use Claude Opus 4.5"
+fi
+
+# Test: free template uses :free models
+FREE_MODEL_COUNT=$(grep -c ':free' "$PROJECT_ROOT/templates/opencode.free.jsonc.tmpl" 2>/dev/null || echo "0")
+if [[ "$FREE_MODEL_COUNT" -gt 10 ]]; then
+    pass "free template uses many :free models ($FREE_MODEL_COUNT occurrences)"
+else
+    fail "free template should use many :free models (got $FREE_MODEL_COUNT)"
+fi
 
 # ============================================
 # Claude 4.5 Model Defaults Tests
@@ -1250,11 +1211,11 @@ done
 echo ""
 echo "--- Claude 4.5 Model Defaults Tests ---"
 
-# Test: Default planner model is claude-opus-4.5 (not 4)
-if grep -q 'claude-opus-4\.5' "$PROJECT_ROOT/lib/generate-configs.sh" 2>/dev/null; then
-    pass "Default planner model is claude-opus-4.5"
+# Test: Premium template uses claude-opus-4.5 (not 4)
+if grep -q 'claude-opus-4\.5' "$PROJECT_ROOT/templates/opencode.premium.jsonc.tmpl" 2>/dev/null; then
+    pass "Premium template uses claude-opus-4.5"
 else
-    fail "Default planner model should be claude-opus-4.5 (not claude-opus-4)"
+    fail "Premium template should use claude-opus-4.5 (not claude-opus-4)"
 fi
 
 # Test: setup-client.sh uses claude-opus-4.5 for planner
@@ -1264,11 +1225,11 @@ else
     fail "setup-client.sh should use claude-opus-4.5 for planner model"
 fi
 
-# Test: No claude-opus-4 (without .5) in lib/generate-configs.sh defaults
-if ! grep -E 'claude-opus-4[^.]|claude-opus-4"' "$PROJECT_ROOT/lib/generate-configs.sh" 2>/dev/null; then
-    pass "No deprecated claude-opus-4 in generate-configs.sh defaults"
+# Test: No claude-opus-4 (without .5) in premium template
+if ! grep -E 'claude-opus-4[^.]|claude-opus-4"' "$PROJECT_ROOT/templates/opencode.premium.jsonc.tmpl" 2>/dev/null; then
+    pass "No deprecated claude-opus-4 in premium template"
 else
-    fail "Should use claude-opus-4.5, not deprecated claude-opus-4 in generate-configs.sh"
+    fail "Should use claude-opus-4.5, not deprecated claude-opus-4"
 fi
 
 # Test: No claude-opus-4 (without .5) in setup-client.sh defaults
@@ -1278,11 +1239,11 @@ else
     fail "Should use claude-opus-4.5, not deprecated claude-opus-4 in setup-client.sh"
 fi
 
-# Test: No claude-sonnet-4 (without .5) in lib/generate-configs.sh defaults
-if ! grep -E 'claude-sonnet-4[^.]|claude-sonnet-4"' "$PROJECT_ROOT/lib/generate-configs.sh" 2>/dev/null; then
-    pass "No deprecated claude-sonnet-4 in generate-configs.sh defaults"
+# Test: No claude-sonnet-4 (without .5) in templates
+if ! grep -E 'claude-sonnet-4[^.]|claude-sonnet-4"' "$PROJECT_ROOT/templates/opencode.premium.jsonc.tmpl" 2>/dev/null; then
+    pass "No deprecated claude-sonnet-4 in premium template"
 else
-    fail "Should use claude-sonnet-4.5, not deprecated claude-sonnet-4 in generate-configs.sh"
+    fail "Should use claude-sonnet-4.5, not deprecated claude-sonnet-4"
 fi
 
 # Test: No claude-sonnet-4 (without .5) in setup-client.sh defaults
@@ -1339,11 +1300,11 @@ fi
 echo ""
 echo "--- Orchestrator Model Tests ---"
 
-# Test: Default orchestrator is deepseek-v3.2 in generate-configs.sh
-if grep -q 'deepseek-v3\.2\|deepseek/deepseek-v3\.2' "$PROJECT_ROOT/lib/generate-configs.sh" 2>/dev/null; then
-    pass "Default orchestrator is deepseek-v3.2 in generate-configs.sh"
+# Test: Frugal tier uses DeepSeek V3.2 for openagent
+if grep -q 'deepseek/deepseek-v3\.2' "$PROJECT_ROOT/templates/opencode.frugal.jsonc.tmpl" 2>/dev/null; then
+    pass "Frugal tier uses DeepSeek V3.2 for openagent"
 else
-    fail "Default orchestrator should be deepseek-v3.2 in generate-configs.sh"
+    fail "Frugal tier should use DeepSeek V3.2 for openagent"
 fi
 
 # Test: setup-client.sh uses deepseek-v3.2 for orchestrator
@@ -1353,11 +1314,12 @@ else
     fail "setup-client.sh should use deepseek-v3.2 for orchestrator"
 fi
 
-# Test: Orchestrator is not deepseek-r1 (that's a reasoning model for planner)
-if ! grep -E '"orchestrator".*deepseek-r1[^0-9-]' "$PROJECT_ROOT/scripts/setup-client.sh" 2>/dev/null; then
-    pass "Orchestrator is not set to deepseek-r1 (reasoning model belongs in planner)"
+# Test: Frugal orchestrator is not deepseek-r1 (that's a reasoning model for planning)
+if ! grep -q '"openagent"' "$PROJECT_ROOT/templates/opencode.frugal.jsonc.tmpl" 2>/dev/null || \
+   ! grep -A2 '"openagent"' "$PROJECT_ROOT/templates/opencode.frugal.jsonc.tmpl" | grep -q 'deepseek-r1'; then
+    pass "Frugal openagent is not set to deepseek-r1 (reasoning model belongs in planner)"
 else
-    fail "Orchestrator should not be deepseek-r1 (that's for the planner role)"
+    fail "Frugal openagent should not be deepseek-r1 (that's for the planner role)"
 fi
 
 # ============================================

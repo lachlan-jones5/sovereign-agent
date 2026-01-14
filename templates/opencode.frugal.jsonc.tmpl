@@ -1,0 +1,236 @@
+{
+  // =============================================================================
+  // FRUGAL TIER CONFIGURATION (OpenRouter)
+  // =============================================================================
+  // Balanced approach for $20/month budget. Maximizes DeepSeek V3.2 (excellent
+  // value at $0.25/$0.38 per 1M tokens) with strategic use of premium models
+  // only where quality is critical.
+  //
+  // PRICING REFERENCE (as of Jan 2026):
+  //   deepseek/deepseek-v3.2          - $0.25/$0.38  - 163K context, BEST VALUE
+  //   meta-llama/llama-3.3-70b-instruct - $0.10/$0.32 - 131K context
+  //   openai/gpt-4o-mini              - $0.15/$0.60  - 128K context
+  //   google/gemini-2.5-flash         - $0.30/$2.50  - 1M context
+  //   anthropic/claude-haiku-4.5     - $1.00/$5.00  - 200K context, fast
+  //
+  // STRATEGY: DeepSeek V3.2 for most tasks (excellent quality/cost ratio),
+  // GPT-4o-mini for coding subagents, Claude Haiku for reviews,
+  // Gemini Flash for large context needs.
+  //
+  // ESTIMATED COST: ~$0.90 per 1M tokens blended
+  // BUDGET: ~22M tokens/month on $20 budget
+  //
+  // LAST UPDATED: Jan 2026 (OpenRouter API sync)
+  // =============================================================================
+
+  "plugin": [
+    "@tarquinen/opencode-dcp@{{DCP_VERSION}}"
+  ],
+  "$schema": "https://opencode.ai/config.json",
+
+  "provider": {
+    "openrouter": {
+      "options": {
+        "apiKey": "{{OPENROUTER_API_KEY}}",
+        "baseURL": "{{RELAY_BASE_URL}}"
+      }
+    }
+  },
+
+  "agent": {
+    // =========================================================================
+    // PRIMARY AGENTS (user-facing, quality matters)
+    // =========================================================================
+
+    // --- Core Agents ---
+    "openagent": {
+      "description": "Universal agent for queries, tasks, and workflow coordination",
+      "mode": "primary",
+      // DeepSeek V3.2 - $0.25/$0.38 - excellent orchestration at low cost
+      "model": "openrouter/deepseek/deepseek-v3.2"
+    },
+    "opencoder": {
+      "description": "Multi-language coding specialist with plan-approve-execute workflow",
+      "mode": "primary",
+      // DeepSeek V3.2 - $0.25/$0.38 - excellent coding quality
+      "model": "openrouter/deepseek/deepseek-v3.2"
+    },
+
+    // --- Development Specialists ---
+    "codebase-agent": {
+      "description": "Primary development agent for multi-language codebases",
+      "mode": "primary",
+      // DeepSeek V3.2 - reliable for codebase work
+      "model": "openrouter/deepseek/deepseek-v3.2"
+    },
+    "backend-specialist": {
+      "description": "API design, database architecture, and server-side development",
+      "mode": "primary",
+      // DeepSeek V3.2 - good for backend patterns
+      "model": "openrouter/deepseek/deepseek-v3.2"
+    },
+    "frontend-specialist": {
+      "description": "UI design with design systems, themes, and animations",
+      "mode": "primary",
+      // Llama 3.3 - $0.10/$0.32 - good for UI patterns, cheaper
+      "model": "openrouter/meta-llama/llama-3.3-70b-instruct"
+    },
+    "devops-specialist": {
+      "description": "CI/CD, infrastructure, Docker, Kubernetes, Terraform",
+      "mode": "primary",
+      // Llama 3.3 - infrastructure configs are templated
+      "model": "openrouter/meta-llama/llama-3.3-70b-instruct"
+    },
+
+    // --- Meta Agents ---
+    "system-builder": {
+      "description": "Meta-level generator for custom AI architectures and agent systems",
+      "mode": "primary",
+      // DeepSeek V3.2 - needs good reasoning for system design
+      "model": "openrouter/deepseek/deepseek-v3.2"
+    },
+    "repo-manager": {
+      "description": "Repository management with lazy context loading and smart delegation",
+      "mode": "primary",
+      // Llama 3.3 - structured repo operations
+      "model": "openrouter/meta-llama/llama-3.3-70b-instruct"
+    },
+
+    // --- Content Agents ---
+    "copywriter": {
+      "description": "Marketing copy, blog posts, and persuasive content creation",
+      "mode": "primary",
+      // DeepSeek V3.2 - decent creative writing
+      "model": "openrouter/deepseek/deepseek-v3.2"
+    },
+    "technical-writer": {
+      "description": "Technical documentation, API docs, and developer guides",
+      "mode": "primary",
+      // Llama 3.3 - good technical accuracy
+      "model": "openrouter/meta-llama/llama-3.3-70b-instruct"
+    },
+
+    // --- Data Agents ---
+    "data-analyst": {
+      "description": "Data analysis, visualization recommendations, and insights",
+      "mode": "primary",
+      // DeepSeek V3.2 - analytical reasoning
+      "model": "openrouter/deepseek/deepseek-v3.2"
+    },
+
+    // =========================================================================
+    // SUBAGENTS (automated, cost-sensitive)
+    // =========================================================================
+
+    // --- Code Subagents ---
+    "coder-agent": {
+      "description": "Executes coding subtasks following plans from primary agents",
+      "mode": "subagent",
+      // GPT-4o-mini - $0.15/$0.60 - good coding, cheap
+      "model": "openrouter/openai/gpt-4o-mini"
+    },
+    "reviewer": {
+      "description": "Code review, security analysis, and quality assurance",
+      "mode": "subagent",
+      // Claude Haiku - $1.00/$5.00 - CRITICAL: security reviews need quality
+      "model": "openrouter/anthropic/claude-haiku-4.5"
+    },
+    "tester": {
+      "description": "Test authoring and TDD with AAA pattern",
+      "mode": "subagent",
+      // GPT-4o-mini - $0.15/$0.60 - test generation
+      "model": "openrouter/openai/gpt-4o-mini"
+    },
+    "build-agent": {
+      "description": "Type checking and build validation",
+      "mode": "subagent",
+      // Gemini 2.5 Flash - $0.30/$2.50 - 1M context for large builds
+      "model": "openrouter/google/gemini-2.5-flash"
+    },
+    "codebase-pattern-analyst": {
+      "description": "Finds code patterns and examples in codebase",
+      "mode": "subagent",
+      // Llama 3.3 - fast pattern matching
+      "model": "openrouter/meta-llama/llama-3.3-70b-instruct"
+    },
+
+    // --- Core Subagents ---
+    "task-manager": {
+      "description": "Complex task breakdown into atomic subtasks with dependencies",
+      "mode": "subagent",
+      // DeepSeek V3.2 - planning tasks
+      "model": "openrouter/deepseek/deepseek-v3.2"
+    },
+    "documentation": {
+      "description": "Documentation authoring for README, specs, developer docs",
+      "mode": "subagent",
+      // Llama 3.3 - great for docs
+      "model": "openrouter/meta-llama/llama-3.3-70b-instruct"
+    },
+    "context-retriever": {
+      "description": "Context search and retrieval for finding relevant files and standards",
+      "mode": "subagent",
+      // Llama 3.3 - search operations
+      "model": "openrouter/meta-llama/llama-3.3-70b-instruct"
+    },
+
+    // --- System Builder Subagents ---
+    "domain-analyzer": {
+      "description": "Analyzes domains to identify concepts, agents, and context structure",
+      "mode": "subagent",
+      // DeepSeek V3.2 - domain analysis
+      "model": "openrouter/deepseek/deepseek-v3.2"
+    },
+    "agent-generator": {
+      "description": "Generates XML-optimized agent files following research-backed patterns",
+      "mode": "subagent",
+      // GPT-4o-mini - structured generation
+      "model": "openrouter/openai/gpt-4o-mini"
+    },
+    "context-organizer": {
+      "description": "Organizes and generates context files for knowledge management",
+      "mode": "subagent",
+      // Llama 3.3 - categorization
+      "model": "openrouter/meta-llama/llama-3.3-70b-instruct"
+    },
+    "workflow-designer": {
+      "description": "Designs workflow definitions with context dependencies",
+      "mode": "subagent",
+      // DeepSeek V3.2 - workflow patterns
+      "model": "openrouter/deepseek/deepseek-v3.2"
+    },
+    "command-creator": {
+      "description": "Creates custom slash commands with clear syntax and examples",
+      "mode": "subagent",
+      // GPT-4o-mini - templated work
+      "model": "openrouter/openai/gpt-4o-mini"
+    },
+
+    // --- Utility Subagents ---
+    "image-specialist": {
+      "description": "Image generation and editing using Gemini AI",
+      "mode": "subagent",
+      // Gemini Flash - image coordination
+      "model": "openrouter/google/gemini-2.5-flash"
+    },
+
+    // =========================================================================
+    // UTILITY AGENTS (high frequency, use cheapest)
+    // =========================================================================
+    "title": {
+      "description": "Session title generation",
+      // Llama 3.3 - $0.10/$0.32 - cheapest quality model
+      "model": "openrouter/meta-llama/llama-3.3-70b-instruct"
+    },
+    "summary": {
+      "description": "Session summary generation",
+      // Llama 3.3 - summarization
+      "model": "openrouter/meta-llama/llama-3.3-70b-instruct"
+    },
+    "compaction": {
+      "description": "Context compaction agent",
+      // Gemini 2.5 Flash - $0.30/$2.50 - 1M context for compaction
+      "model": "openrouter/google/gemini-2.5-flash"
+    }
+  }
+}

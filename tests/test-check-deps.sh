@@ -209,21 +209,21 @@ test_build_opencode_checks_submodule() {
     fi
 }
 
-# Test 13: build_oh_my_opencode checks for submodule
-test_build_omo_checks_submodule() {
-    local name="build_oh_my_opencode checks for submodule existence"
+# Test 13: check_openagents verifies OpenAgents submodule
+test_check_openagents() {
+    local name="check_openagents checks for submodule existence"
     
     # Temporarily override VENDOR_DIR to non-existent path
     local original_vendor="$VENDOR_DIR"
     VENDOR_DIR="/nonexistent/path"
     
     local output
-    output=$(build_oh_my_opencode 2>&1)
+    output=$(check_openagents 2>&1)
     local exit_code=$?
     
     VENDOR_DIR="$original_vendor"
     
-    if [[ $exit_code -ne 0 ]] && echo "$output" | grep -q -i "submodule"; then
+    if [[ $exit_code -ne 0 ]] && echo "$output" | grep -q -i "submodule\|not found"; then
         pass "$name"
     else
         fail "$name" "error about submodule" "$output"
@@ -603,7 +603,7 @@ test_log_error_format
 test_vendor_dir_set
 test_project_dir_set
 test_build_opencode_checks_submodule
-test_build_omo_checks_submodule
+test_check_openagents
 
 echo
 echo "--- PATH Persistence Tests ---"
@@ -660,58 +660,43 @@ else
 fi
 
 echo
-echo "--- oh-my-opencode Install CLI Tests ---"
+echo "--- OpenAgents Verification Tests ---"
 echo
 
-# Test 31: oh-my-opencode install uses CLI command, not package.json script
-# The bug was: 'bun run install' hit /usr/bin/install instead of the CLI
-if grep -q 'dist/cli/index.js install\|bunx oh-my-opencode install' "$LIB_DIR/check-deps.sh"; then
-    pass "oh-my-opencode install uses CLI command (not bun run install)"
+# Test 31: check_openagents function exists
+if grep -q 'check_openagents\s*()' "$LIB_DIR/check-deps.sh"; then
+    pass "check_openagents function exists in check-deps.sh"
 else
-    fail "oh-my-opencode install should use CLI (dist/cli/index.js install), not 'bun run install' which hits /usr/bin/install"
+    fail "check_openagents function should exist in check-deps.sh" "" ""
 fi
 
-# Test 32: oh-my-opencode install is preceded by build step
-# The CLI needs to be built first before running dist/cli/index.js
-if grep -B15 'dist/cli/index.js install' "$LIB_DIR/check-deps.sh" | grep -q 'bun run build'; then
-    pass "oh-my-opencode builds CLI before running install command"
+# Test 32: check_openagents verifies .opencode/agent directory
+if grep -q '\.opencode/agent' "$LIB_DIR/check-deps.sh"; then
+    pass "check_openagents verifies .opencode/agent directory exists"
 else
-    fail "oh-my-opencode should run 'bun run build' before 'dist/cli/index.js install'"
+    fail "check_openagents should verify .opencode/agent directory exists" "" ""
 fi
 
-# Test 33: oh-my-opencode install passes --no-tui flag
-if grep -q 'install.*--no-tui' "$LIB_DIR/check-deps.sh"; then
-    pass "oh-my-opencode install passes --no-tui flag"
+# Test 33: OpenAgents does not require build step (markdown files)
+if grep -q 'markdown.*no build\|no build needed' "$LIB_DIR/check-deps.sh"; then
+    pass "OpenAgents is markdown-based (no build needed)"
 else
-    fail "oh-my-opencode install should pass --no-tui for non-interactive mode"
+    fail "check_openagents should note that OpenAgents is markdown-based" "" ""
 fi
 
-# Test 34: oh-my-opencode install does NOT use 'bun run install' pattern
-# This pattern would hit /usr/bin/install on systems where there's no 'install' script in package.json
-if ! grep -q 'bun run install --no-tui' "$LIB_DIR/check-deps.sh"; then
-    pass "oh-my-opencode does NOT use 'bun run install' pattern (avoids /usr/bin/install)"
+# Test 34: check_all_deps calls check_openagents
+if grep 'check_openagents' "$LIB_DIR/check-deps.sh" | grep -v 'check_openagents()' | grep -qv '^#'; then
+    pass "check_all_deps calls check_openagents"
 else
-    fail "oh-my-opencode should NOT use 'bun run install' - this pattern hits /usr/bin/install"
+    fail "check_all_deps should call check_openagents" "" ""
 fi
 
-# Test 35: Verify oh-my-opencode package.json has no 'install' script
-# This confirms why 'bun run install' fails - there is no such script
-if [[ -f "$PROJECT_DIR/vendor/oh-my-opencode/package.json" ]]; then
-    if ! jq -e '.scripts.install' "$PROJECT_DIR/vendor/oh-my-opencode/package.json" >/dev/null 2>&1; then
-        pass "oh-my-opencode package.json has no 'install' script (confirms CLI is needed)"
-    else
-        fail "oh-my-opencode has 'install' script in package.json - test assumption wrong"
-    fi
+# Test 35: Verify OpenAgents submodule has agent files
+if [[ -d "$PROJECT_DIR/vendor/OpenAgents/.opencode/agent" ]]; then
+    pass "OpenAgents submodule has .opencode/agent directory"
 else
     # Submodule might not be initialized in test environment
-    pass "oh-my-opencode package.json check skipped (submodule not initialized)"
-fi
-
-# Test 36: oh-my-opencode install uses correct provider flags
-if grep -q 'install.*--claude=\|install.*--gemini=' "$LIB_DIR/check-deps.sh"; then
-    pass "oh-my-opencode install uses provider selection flags"
-else
-    fail "oh-my-opencode install should use provider flags (--claude, --gemini, etc.)"
+    pass "OpenAgents agent directory check skipped (submodule may not be initialized)"
 fi
 
 echo

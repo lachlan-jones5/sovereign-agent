@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # install.sh - Sovereign Agent Installer
-# Sets up the OpenCode-DCP Pipeline with oh-my-opencode orchestration
+# Sets up the OpenCode with OpenAgents orchestration
 
 set -e
 
@@ -45,7 +45,7 @@ print_banner() {
     echo ' |____/ \___/ \_/ \___|_|  \___|_|\__, |_| |_/_/   \_\__, |\___|_| |_|\__|'
     echo '                                  |___/             |___/                 '
     echo -e "${NC}"
-    echo -e "${BOLD}  OpenCode-DCP Pipeline Installer${NC}"
+    echo -e "${BOLD}  OpenAgents Pipeline Installer${NC}"
     echo -e "  Privacy-compliant agentic software engineering"
     echo
 }
@@ -105,14 +105,14 @@ check_submodules() {
     if [[ ! -d "$SCRIPT_DIR/.git" ]]; then
         log_info "Not a git repo - skipping submodule check"
         # Verify vendor directories exist (should be included in bundle)
-        if [[ ! -d "$VENDOR_DIR/opencode" ]] || [[ ! -d "$VENDOR_DIR/oh-my-opencode" ]]; then
+        if [[ ! -d "$VENDOR_DIR/opencode" ]] || [[ ! -d "$VENDOR_DIR/OpenAgents" ]]; then
             log_error "Vendor directories missing. If installed from bundle, the bundle may be incomplete."
             exit 1
         fi
         return
     fi
     
-    if [[ ! -d "$VENDOR_DIR/opencode/.git" ]] || [[ ! -d "$VENDOR_DIR/oh-my-opencode/.git" ]]; then
+    if [[ ! -d "$VENDOR_DIR/opencode/.git" ]] || [[ ! -d "$VENDOR_DIR/OpenAgents/.git" ]]; then
         log_info "Initializing git submodules..."
         git -C "$SCRIPT_DIR" submodule update --init --recursive
     fi
@@ -155,18 +155,17 @@ main() {
     # Step 4: Final summary
     log_header "Installation Complete!"
 
+    local tier
+    tier=$(jq -r '.tier // "frugal"' "$CONFIG_FILE")
+
     echo -e "${GREEN}The Sovereign Agent pipeline has been configured successfully.${NC}"
     echo
     echo -e "${BOLD}Generated files:${NC}"
-    echo "  - $OPENCODE_CONFIG_DIR/opencode.json"
+    echo "  - $OPENCODE_CONFIG_DIR/opencode.jsonc"
     echo "  - $OPENCODE_CONFIG_DIR/dcp.jsonc"
-    echo "  - $OPENCODE_CONFIG_DIR/oh-my-opencode.json"
+    echo "  - $OPENCODE_CONFIG_DIR/.opencode/ (agents, commands, context)"
     echo
-    echo -e "${BOLD}Model Configuration:${NC}"
-    echo "  - Orchestrator: $(jq -r '.models.orchestrator' "$CONFIG_FILE")"
-    echo "  - Planner:      $(jq -r '.models.planner' "$CONFIG_FILE")"
-    echo "  - Librarian:    $(jq -r '.models.librarian' "$CONFIG_FILE")"
-    echo "  - Fallback:     $(jq -r '.models.fallback' "$CONFIG_FILE")"
+    echo -e "${BOLD}Tier: ${GREEN}$tier${NC}"
     echo
     echo -e "${BOLD}Privacy:${NC}"
     echo "  - Zero Data Retention (ZDR): ${GREEN}Enabled${NC}"
@@ -177,13 +176,11 @@ main() {
     echo "  2. Navigate to your project directory"
     echo "  3. Run: ${BOLD}opencode${NC}"
     echo
-    echo -e "${BOLD}Useful commands:${NC}"
-    echo "  - Start ultrawork mode: /ulw <task description>"
-    echo "  - Initialize deep context: /init-deep"
-    echo
-    echo -e "${BOLD}Maintenance:${NC}"
-    echo "  - Sync with upstream: ./scripts/sync-upstream.sh status"
-    echo "  - Rebase on upstream:  ./scripts/sync-upstream.sh all"
+    echo -e "${BOLD}Available agents:${NC}"
+    echo "  - @openagent - Universal orchestrator"
+    echo "  - @opencoder - Multi-language coding specialist"
+    echo "  - @reviewer  - Code review and security"
+    echo "  - @tester    - Test authoring with TDD"
     echo
 }
 

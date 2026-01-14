@@ -283,51 +283,25 @@ WRAPPER
     return 0
 }
 
-# Build and install oh-my-opencode from submodule
-build_oh_my_opencode() {
-    local omo_dir="$VENDOR_DIR/oh-my-opencode"
+# Verify OpenAgents files exist (no build needed - markdown files)
+check_openagents() {
+    local openagents_dir="$VENDOR_DIR/OpenAgents"
 
-    if [[ ! -d "$omo_dir" ]]; then
-        log_error "oh-my-opencode submodule not found at $omo_dir"
+    if [[ ! -d "$openagents_dir" ]]; then
+        log_error "OpenAgents submodule not found at $openagents_dir"
         log_error "Run: git submodule update --init --recursive"
         return 1
     fi
 
-    log_info "Installing oh-my-opencode from source..."
-
-    # Ensure bun is in path
-    if [[ -d "$HOME/.bun/bin" ]]; then
-        export PATH="$HOME/.bun/bin:$PATH"
-    fi
-
-    if ! command_exists bun; then
-        log_error "Bun is required but not found in PATH"
+    # Verify submodule has content
+    if [[ ! -d "$openagents_dir/.opencode/agent" ]]; then
+        log_error "OpenAgents submodule appears empty at $openagents_dir"
+        log_error "Run: git submodule update --init --recursive"
         return 1
     fi
 
-    cd "$omo_dir"
-
-    # Install dependencies
-    bun install
-    
-    # Build the CLI first
-    if ! bun run build; then
-        log_error "Failed to build oh-my-opencode CLI"
-        return 1
-    fi
-    
-    # Verify the CLI was built
-    if [[ ! -f "dist/cli/index.js" ]]; then
-        log_error "CLI build did not produce dist/cli/index.js"
-        return 1
-    fi
-    
-    # Run the install CLI command (not a package.json script)
-    bun run dist/cli/index.js install --no-tui --claude=no --chatgpt=no --gemini=yes
-
-    cd "$PROJECT_DIR"
-
-    log_info "oh-my-opencode installed successfully"
+    log_info "OpenAgents verified (markdown-based agents, no build needed)"
+    return 0
 }
 
 # Main check function
@@ -365,8 +339,8 @@ check_all_deps() {
     fi
     echo
 
-    if ! build_oh_my_opencode; then
-        log_error "Failed to install oh-my-opencode"
+    if ! check_openagents; then
+        log_error "Failed to verify OpenAgents"
         return 1
     fi
     echo
