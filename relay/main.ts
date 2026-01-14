@@ -378,12 +378,25 @@ fi
 echo ""
 echo "Running install.sh..."
 chmod +x install.sh
-./install.sh
+if ! ./install.sh; then
+    echo ""
+    echo "=== Setup FAILED ==="
+    echo ""
+    echo "install.sh exited with an error. Check the output above for details."
+    echo "Common fixes:"
+    echo "  - Ensure Go and Bun are installed"
+    echo "  - Run: git submodule update --init --recursive"
+    echo ""
+    exit 1
+fi
 
 echo ""
 echo "=== Setup Complete ==="
 echo ""
-echo "Run OpenCode with:"
+echo "Start a new shell session to pick up PATH changes:"
+echo "  exec \\$SHELL"
+echo ""
+echo "Then run OpenCode:"
 echo "  opencode"
 echo ""
 `;
@@ -409,6 +422,26 @@ echo ""
         const checkResult = await exec("ls -la install.sh lib/ relay/ vendor/ 2>&1 || echo 'MISSING FILES'", REPO_PATH);
         log("info", `File check: ${checkResult.stdout.substring(0, 200)}`);
         
+        // Verify vendor submodules have actual content (not just empty directories)
+        const vendorCheck = await exec(
+          "ls vendor/opencode/go.mod vendor/oh-my-opencode/package.json 2>&1",
+          REPO_PATH
+        );
+        if (vendorCheck.exitCode !== 0 || vendorCheck.stdout.includes("No such file")) {
+          log("error", `Vendor submodules are empty: ${vendorCheck.stdout} ${vendorCheck.stderr}`);
+          return new Response(
+            JSON.stringify({ 
+              error: "Vendor submodules are not populated", 
+              details: "Run 'git submodule update --init --recursive' on the relay server",
+              stdout: vendorCheck.stdout,
+              stderr: vendorCheck.stderr
+            }),
+            {
+              status: 500,
+              headers: { "Content-Type": "application/json" },
+            }
+          );
+        }
         // Get approximate size first (for progress indicator)
         const sizeResult = await exec(
           `tar -czf - --exclude='.git' --exclude='config.json' --exclude='node_modules' --exclude='.env' --exclude='*.log' --exclude='tests' . 2>/dev/null | wc -c`,

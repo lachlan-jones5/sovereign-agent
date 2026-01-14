@@ -133,6 +133,8 @@ check_go() {
 check_bun() {
     if command_exists bun; then
         log_info "Bun is already installed: $(bun --version)"
+        # Ensure it's in rc file even if already installed
+        ensure_path_in_rc "$HOME/.bun/bin"
         return 0
     fi
 
@@ -142,6 +144,8 @@ check_bun() {
     # Add to path for current session
     if [[ -d "$HOME/.bun/bin" ]]; then
         export PATH="$HOME/.bun/bin:$PATH"
+        # Persist to shell rc
+        ensure_path_in_rc "$HOME/.bun/bin"
     fi
 
     if command_exists bun; then
@@ -151,47 +155,51 @@ check_bun() {
     fi
 }
 
-# Add ~/.local/bin to PATH in shell rc file if not already present
-ensure_local_bin_in_path() {
-    local local_bin="$HOME/.local/bin"
-    local path_export="export PATH=\"\$HOME/.local/bin:\$PATH\""
+# Add a directory to PATH in shell rc file if not already present
+# Usage: ensure_path_in_rc /path/to/dir
+ensure_path_in_rc() {
+    local target_dir="$1"
+    local dir_name="${target_dir/#$HOME/\~}"  # For display: /home/user/.bun -> ~/.bun
     
     # Determine which shell rc file to use
     local rc_file=""
     if [[ -n "${ZSH_VERSION:-}" ]] || [[ "$SHELL" == */zsh ]]; then
         rc_file="$HOME/.zshrc"
     elif [[ -n "${BASH_VERSION:-}" ]] || [[ "$SHELL" == */bash ]]; then
-        # Prefer .bashrc for interactive shells, but use .profile if .bashrc doesn't exist
         if [[ -f "$HOME/.bashrc" ]]; then
             rc_file="$HOME/.bashrc"
         else
             rc_file="$HOME/.profile"
         fi
     else
-        # Fallback to .profile for other shells
         rc_file="$HOME/.profile"
     fi
     
     # Check if already in PATH
-    if [[ ":$PATH:" == *":$local_bin:"* ]]; then
-        log_info "~/.local/bin already in PATH"
+    if [[ ":$PATH:" == *":$target_dir:"* ]]; then
         return 0
     fi
     
-    # Check if already in rc file
-    if [[ -f "$rc_file" ]] && grep -q '\.local/bin' "$rc_file"; then
-        log_info "~/.local/bin already configured in $rc_file"
+    # Check if already in rc file (match the directory name)
+    local dir_basename
+    dir_basename=$(basename "$target_dir")
+    if [[ -f "$rc_file" ]] && grep -q "$dir_basename" "$rc_file"; then
         return 0
     fi
     
     # Add to rc file
-    log_info "Adding ~/.local/bin to PATH in $rc_file"
+    log_info "Adding $dir_name to PATH in $rc_file"
     echo "" >> "$rc_file"
     echo "# Added by sovereign-agent installer" >> "$rc_file"
-    echo "$path_export" >> "$rc_file"
+    echo "export PATH=\"$target_dir:\$PATH\"" >> "$rc_file"
     
     # Also export for current session
-    export PATH="$local_bin:$PATH"
+    export PATH="$target_dir:$PATH"
+}
+
+# Add ~/.local/bin to PATH (convenience wrapper)
+ensure_local_bin_in_path() {
+    ensure_path_in_rc "$HOME/.local/bin"
 }
 
 # Build OpenCode from submodule
