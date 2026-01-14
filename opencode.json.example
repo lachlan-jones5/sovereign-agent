@@ -1,0 +1,34 @@
+{
+  "$schema": "https://opencode.ai/schemas/opencode.json",
+  
+  "model": "openrouter/anthropic/claude-sonnet-4",
+  
+  "provider": {
+    "openrouter": {
+      "options": {
+        "apiKey": "{env:OPENROUTER_API_KEY}"
+      }
+    }
+  },
+  
+  "agent": {
+    "build": {
+      "model": "openrouter/anthropic/claude-sonnet-4"
+    },
+    "plan": {
+      "model": "openrouter/deepseek/deepseek-r1-0528"
+    },
+    "general": {
+      "model": "openrouter/deepseek/deepseek-chat-v3-0324"
+    },
+    "explore": {
+      "model": "openrouter/google/gemini-2.5-flash-preview-05-20"
+    },
+    "title": {
+      "model": "openrouter/deepseek/deepseek-chat-v3-0324"
+    },
+    "summary": {
+      "model": "openrouter/deepseek/deepseek-chat-v3-0324"
+    }
+  }
+}

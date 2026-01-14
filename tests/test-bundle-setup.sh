@@ -980,6 +980,50 @@ else
 fi
 
 # ============================================
+# OpenCode Config Template Tests
+# ============================================
+echo ""
+echo "--- OpenCode Config Template Tests ---"
+
+# Test: opencode template uses options.apiKey (not apiKey at root)
+if grep -q '"options"' "$PROJECT_ROOT/templates/opencode.json.tmpl" 2>/dev/null && \
+   grep -q '"apiKey"' "$PROJECT_ROOT/templates/opencode.json.tmpl" 2>/dev/null; then
+    pass "opencode template uses options.apiKey (not root level)"
+else
+    fail "opencode template should use options.apiKey under provider"
+fi
+
+# Test: opencode template does NOT have apiKey at provider root
+if ! grep -q '"openrouter".*{[^}]*"apiKey"' "$PROJECT_ROOT/templates/opencode.json.tmpl" 2>/dev/null || \
+   grep -q '"options"' "$PROJECT_ROOT/templates/opencode.json.tmpl" 2>/dev/null; then
+    pass "opencode template apiKey is under options (not at provider root)"
+else
+    fail "opencode template should NOT have apiKey at provider root level"
+fi
+
+# Test: opencode template uses agent config (not models/model_config)
+if grep -q '"agent"' "$PROJECT_ROOT/templates/opencode.json.tmpl" 2>/dev/null && \
+   ! grep -q '"models"' "$PROJECT_ROOT/templates/opencode.json.tmpl" 2>/dev/null; then
+    pass "opencode template uses agent config (not deprecated models)"
+else
+    fail "opencode template should use agent config, not models/model_config"
+fi
+
+# Test: opencode template has model at top level
+if grep -q '"model":' "$PROJECT_ROOT/templates/opencode.json.tmpl" 2>/dev/null; then
+    pass "opencode template has model at top level"
+else
+    fail "opencode template should have model at top level"
+fi
+
+# Test: opencode template has $schema
+if grep -q '\$schema' "$PROJECT_ROOT/templates/opencode.json.tmpl" 2>/dev/null; then
+    pass "opencode template has \$schema for validation"
+else
+    fail "opencode template should have \$schema"
+fi
+
+# ============================================
 # Summary
 # ============================================
 echo ""

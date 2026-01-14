@@ -1,44 +1,37 @@
 {
+  "$schema": "https://opencode.ai/schemas/opencode.json",
   "theme": "opencode",
   "plugin": [
     "@tarquinen/opencode-dcp@{{DCP_VERSION}}",
     "oh-my-opencode@{{OH_MY_OPENCODE_VERSION}}"
   ],
+  "model": "openrouter/{{ORCHESTRATOR_MODEL}}",
   "provider": {
     "openrouter": {
-      "apiKey": "{{OPENROUTER_API_KEY}}",
-      "model": "{{ORCHESTRATOR_MODEL}}",
       "options": {
-        "baseURL": "{{RELAY_BASE_URL}}",
-        "zdr": true,
-        "site_url": "{{SITE_URL}}",
-        "site_name": "{{SITE_NAME}}",
-        "provider": {
-          "order": {{PROVIDER_WHITELIST}},
-          "allow_fallbacks": false
-        }
+        "apiKey": "{{OPENROUTER_API_KEY}}",
+        "baseURL": "{{RELAY_BASE_URL}}"
       }
     }
   },
-  "models": {
-    "default": "openrouter/{{ORCHESTRATOR_MODEL}}",
-    "planner": "openrouter/{{PLANNER_MODEL}}",
-    "librarian": "openrouter/{{LIBRARIAN_MODEL}}"
-  },
-  "model_config": {
-    "openrouter/{{ORCHESTRATOR_MODEL}}": {
-      "max_tokens": {{ORCHESTRATOR_MAX_TOKENS}}
+  "agent": {
+    "build": {
+      "model": "openrouter/{{ORCHESTRATOR_MODEL}}"
     },
-    "openrouter/{{PLANNER_MODEL}}": {
-      "max_tokens": {{PLANNER_MAX_TOKENS}}
+    "plan": {
+      "model": "openrouter/{{PLANNER_MODEL}}"
     },
-    "openrouter/{{LIBRARIAN_MODEL}}": {
-      "max_tokens": {{LIBRARIAN_MAX_TOKENS}}
+    "general": {
+      "model": "openrouter/{{ORCHESTRATOR_MODEL}}"
+    },
+    "explore": {
+      "model": "openrouter/{{LIBRARIAN_MODEL}}"
+    },
+    "title": {
+      "model": "openrouter/{{ORCHESTRATOR_MODEL}}"
+    },
+    "summary": {
+      "model": "openrouter/{{ORCHESTRATOR_MODEL}}"
     }
-  },
-  "tools": {
-    "write": true,
-    "bash": true,
-    "mcp": true
   }
 }
