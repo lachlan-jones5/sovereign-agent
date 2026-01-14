@@ -54,12 +54,7 @@ create_test_config() {
   "openrouter_api_key": "test-key",
   "site_url": "https://test.local",
   "site_name": "Test",
-  "models": {
-    "orchestrator": "deepseek/deepseek-v3",
-    "planner": "anthropic/claude-opus-4.5",
-    "librarian": "google/gemini-3-flash",
-    "fallback": "meta-llama/llama-3.3-70b-instruct"
-  },
+  "tier": "frugal",
   "preferences": {
     "ultrawork_max_iterations": 50,
     "dcp_turn_protection": 2,
@@ -75,8 +70,7 @@ create_test_config() {
     }
   },
   "plugins": {
-    "opencode_dcp_version": "0.5.0",
-    "oh_my_opencode_version": "1.0.0",
+    "opencode_dcp_version": "1.2.1",
     "pin_versions": true
   },
   "tool_permissions": {

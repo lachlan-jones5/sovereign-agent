@@ -669,7 +669,7 @@ echo
 
 # Test: Default version pinning
 test_default_version_pinning() {
-    local name="Default version pinning uses 0.5.0"
+    local name="Default version pinning uses 1.2.1"
     local output_dir="$TEST_TMP_DIR/default-version"
     
     cat > "$TEST_TMP_DIR/default-version.json" << 'EOF'
@@ -682,7 +682,7 @@ EOF
     
     generate_all_configs "$TEST_TMP_DIR/default-version.json" "$output_dir" >/dev/null 2>&1
     
-    if grep -q '0.5.0\|dcp' "$output_dir/dcp.jsonc"; then
+    if grep -q '1.2.1\|dcp' "$output_dir/dcp.jsonc"; then
         pass "$name"
     else
         fail "$name" "version or dcp reference" "not found"

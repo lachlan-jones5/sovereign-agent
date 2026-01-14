@@ -91,7 +91,7 @@ generate_from_template() {
     
     local dcp_version
     if [[ "$pin_versions" == "true" ]]; then
-        dcp_version=$(get_config_value "$config_file" '.plugins.opencode_dcp_version' '0.5.0')
+        dcp_version=$(get_config_value "$config_file" '.plugins.opencode_dcp_version' '1.2.1')
     else
         dcp_version="latest"
     fi
