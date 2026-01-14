@@ -55,16 +55,14 @@ if ! $HAS_BUN && ! $HAS_DOCKER; then
     exit 1
 fi
 
-# Clone repo if not already present
+# Clone repo (remove existing directory for clean state)
 if [[ -d "$INSTALL_DIR" ]]; then
-    echo "Directory $INSTALL_DIR already exists"
-    cd "$INSTALL_DIR"
-    git pull --quiet || true
-else
-    echo "Cloning sovereign-agent..."
-    git clone --quiet https://github.com/lachlan-jones5/sovereign-agent.git "$INSTALL_DIR"
-    cd "$INSTALL_DIR"
+    echo "Removing existing $INSTALL_DIR for clean install..."
+    rm -rf "$INSTALL_DIR"
 fi
+echo "Cloning sovereign-agent..."
+git clone --quiet https://github.com/lachlan-jones5/sovereign-agent.git "$INSTALL_DIR"
+cd "$INSTALL_DIR"
 
 # Initialize submodules (required for bundle endpoint to work)
 echo "Initializing submodules..."

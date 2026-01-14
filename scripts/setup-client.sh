@@ -35,19 +35,15 @@ if ! command -v bun &>/dev/null; then
     export PATH="$HOME/.bun/bin:$PATH"
 fi
 
-# Clone repo if not already present
+# Clone repo (remove existing directory for clean state)
 if [[ -d "$INSTALL_DIR" ]]; then
-    echo "Directory $INSTALL_DIR already exists"
-    cd "$INSTALL_DIR"
-    echo "Pulling latest changes..."
-    git pull --quiet
-    git submodule update --init --recursive --depth 1
-else
-    echo "Cloning sovereign-agent (this may take a minute)..."
-    git clone --recurse-submodules --shallow-submodules \
-        https://github.com/lachlan-jones5/sovereign-agent.git "$INSTALL_DIR"
-    cd "$INSTALL_DIR"
+    echo "Removing existing $INSTALL_DIR for clean install..."
+    rm -rf "$INSTALL_DIR"
 fi
+echo "Cloning sovereign-agent (this may take a minute)..."
+git clone --recurse-submodules --shallow-submodules \
+    https://github.com/lachlan-jones5/sovereign-agent.git "$INSTALL_DIR"
+cd "$INSTALL_DIR"
 
 # Create client config if not exists
 if [[ -f config.json ]]; then
