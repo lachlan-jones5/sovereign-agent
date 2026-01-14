@@ -1038,6 +1038,142 @@ else
 fi
 
 # ============================================
+# oh-my-opencode Config Template Tests
+# ============================================
+echo ""
+echo "--- oh-my-opencode Config Template Tests ---"
+
+# Test: oh-my-opencode template does NOT have DCP config (DCP uses its own file)
+if ! grep -q 'dynamic_context_pruning' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" 2>/dev/null; then
+    pass "oh-my-opencode template does NOT have DCP config (uses separate dcp.jsonc)"
+else
+    fail "oh-my-opencode template should NOT have dynamic_context_pruning (DCP uses dcp.jsonc)"
+fi
+
+# Test: oh-my-opencode template does NOT have experimental section
+if ! grep -q '"experimental"' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" 2>/dev/null; then
+    pass "oh-my-opencode template does NOT have experimental section"
+else
+    fail "oh-my-opencode template should NOT have experimental section (DCP config is separate)"
+fi
+
+# Test: Sisyphus agent model has openrouter/ prefix
+if grep -q '"Sisyphus"' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" 2>/dev/null && \
+   grep -A2 '"Sisyphus"' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" | grep -q 'openrouter/'; then
+    pass "Sisyphus agent model has openrouter/ prefix"
+else
+    fail "Sisyphus agent model should have openrouter/ prefix for OpenRouter API"
+fi
+
+# Test: oracle agent model has openrouter/ prefix
+if grep -A2 '"oracle"' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" | grep -q 'openrouter/'; then
+    pass "oracle agent model has openrouter/ prefix"
+else
+    fail "oracle agent model should have openrouter/ prefix"
+fi
+
+# Test: librarian agent model has openrouter/ prefix
+if grep -A2 '"librarian"' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" | grep -q 'openrouter/'; then
+    pass "librarian agent model has openrouter/ prefix"
+else
+    fail "librarian agent model should have openrouter/ prefix"
+fi
+
+# Test: explore agent model has openrouter/ prefix
+if grep -A2 '"explore"' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" | grep -q 'openrouter/'; then
+    pass "explore agent model has openrouter/ prefix"
+else
+    fail "explore agent model should have openrouter/ prefix"
+fi
+
+# Test: All agent models use openrouter/ prefix (comprehensive check)
+AGENTS_WITH_MODEL=$(grep -B1 '"model":' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" 2>/dev/null | grep -c '"model":' || echo "0")
+AGENTS_WITH_OPENROUTER=$(grep '"model":.*openrouter/' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" 2>/dev/null | wc -l || echo "0")
+if [[ "$AGENTS_WITH_MODEL" -eq "$AGENTS_WITH_OPENROUTER" ]] && [[ "$AGENTS_WITH_MODEL" -gt 0 ]]; then
+    pass "All $AGENTS_WITH_MODEL agent models have openrouter/ prefix"
+else
+    fail "All agent models should have openrouter/ prefix ($AGENTS_WITH_OPENROUTER/$AGENTS_WITH_MODEL have it)"
+fi
+
+# Test: oh-my-opencode template has sisyphus_agent config
+if grep -q '"sisyphus_agent"' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" 2>/dev/null; then
+    pass "oh-my-opencode template has sisyphus_agent config section"
+else
+    fail "oh-my-opencode template should have sisyphus_agent config"
+fi
+
+# Test: oh-my-opencode template has max_iterations setting
+if grep -q 'max_iterations' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" 2>/dev/null; then
+    pass "oh-my-opencode template has max_iterations setting"
+else
+    fail "oh-my-opencode template should have max_iterations setting"
+fi
+
+# Test: oh-my-opencode template has tool_permissions for bash
+if grep -q '"tool_permissions"' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" 2>/dev/null && \
+   grep -q '"bash"' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" 2>/dev/null; then
+    pass "oh-my-opencode template has tool_permissions for bash"
+else
+    fail "oh-my-opencode template should have tool_permissions for bash"
+fi
+
+# ============================================
+# DCP Config Template Tests
+# ============================================
+echo ""
+echo "--- DCP Config Template Tests ---"
+
+# Test: dcp.jsonc template exists
+if [[ -f "$PROJECT_ROOT/templates/dcp.jsonc.tmpl" ]]; then
+    pass "dcp.jsonc template exists as separate file"
+else
+    fail "dcp.jsonc template should exist as separate file"
+fi
+
+# Test: dcp.jsonc template has enabled flag
+if grep -q '"enabled"' "$PROJECT_ROOT/templates/dcp.jsonc.tmpl" 2>/dev/null; then
+    pass "dcp.jsonc template has enabled flag"
+else
+    fail "dcp.jsonc template should have enabled flag"
+fi
+
+# Test: dcp.jsonc template has turnProtection
+if grep -q 'turnProtection\|turn_protection' "$PROJECT_ROOT/templates/dcp.jsonc.tmpl" 2>/dev/null; then
+    pass "dcp.jsonc template has turnProtection setting"
+else
+    fail "dcp.jsonc template should have turnProtection setting"
+fi
+
+# Test: dcp.jsonc template has strategies section
+if grep -q 'strategies' "$PROJECT_ROOT/templates/dcp.jsonc.tmpl" 2>/dev/null; then
+    pass "dcp.jsonc template has strategies section"
+else
+    fail "dcp.jsonc template should have strategies section"
+fi
+
+# Test: dcp.jsonc template has tools config
+if grep -q '"tools"' "$PROJECT_ROOT/templates/dcp.jsonc.tmpl" 2>/dev/null; then
+    pass "dcp.jsonc template has tools config section"
+else
+    fail "dcp.jsonc template should have tools config section"
+fi
+
+# Test: Config generation deploys dcp.jsonc
+if grep -q 'dcp\.jsonc' "$PROJECT_ROOT/lib/generate-configs.sh" 2>/dev/null; then
+    pass "generate-configs.sh deploys dcp.jsonc"
+else
+    fail "generate-configs.sh should deploy dcp.jsonc"
+fi
+
+# Test: DCP and oh-my-opencode configs are separate (no duplication)
+if ! grep -q 'dynamic_context_pruning' "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" 2>/dev/null && \
+   [[ -f "$PROJECT_ROOT/templates/dcp.jsonc.tmpl" ]]; then
+    pass "DCP config is only in dcp.jsonc, not duplicated in oh-my-opencode.json"
+else
+    fail "DCP config should only be in dcp.jsonc, not in oh-my-opencode.json"
+fi
+
+# ============================================
 # Summary
 # ============================================
 echo ""

@@ -1,28 +1,28 @@
 {
   "agents": {
     "Sisyphus": {
-      "model": "{{ORCHESTRATOR_MODEL}}"
+      "model": "openrouter/{{ORCHESTRATOR_MODEL}}"
     },
     "oracle": {
-      "model": "{{PLANNER_MODEL}}",
+      "model": "openrouter/{{PLANNER_MODEL}}",
       "permissions": {
         "allow_tool_execution": "ask"
       }
     },
     "librarian": {
-      "model": "{{LIBRARIAN_MODEL}}"
+      "model": "openrouter/{{LIBRARIAN_MODEL}}"
     },
     "explore": {
-      "model": "{{LIBRARIAN_MODEL}}"
+      "model": "openrouter/{{LIBRARIAN_MODEL}}"
     },
     "frontend-ui-ux-engineer": {
-      "model": "{{ORCHESTRATOR_MODEL}}"
+      "model": "openrouter/{{ORCHESTRATOR_MODEL}}"
     },
     "document-writer": {
-      "model": "{{LIBRARIAN_MODEL}}"
+      "model": "openrouter/{{LIBRARIAN_MODEL}}"
     },
     "multimodal-looker": {
-      "model": "{{LIBRARIAN_MODEL}}"
+      "model": "openrouter/{{LIBRARIAN_MODEL}}"
     }
   },
   "sisyphus_agent": {
@@ -35,20 +35,6 @@
       "allowed_commands": {{BASH_ALLOWED_COMMANDS}},
       "blocked_commands": {{BASH_BLOCKED_COMMANDS}},
       "blocked_patterns": {{BASH_BLOCKED_PATTERNS}}
-    }
-  },
-  "experimental": {
-    "dynamic_context_pruning": {
-      "enabled": true,
-      "turn_protection": {{DCP_TURN_PROTECTION}},
-      "strategies": {
-        "supersede_writes": true,
-        "deduplicate_reads": true,
-        "purge_old_errors": {
-          "enabled": true,
-          "after_turns": {{DCP_ERROR_RETENTION_TURNS}}
-        }
-      }
     }
   }
 }

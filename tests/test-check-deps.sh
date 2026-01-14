@@ -660,6 +660,61 @@ else
 fi
 
 echo
+echo "--- oh-my-opencode Install CLI Tests ---"
+echo
+
+# Test 31: oh-my-opencode install uses CLI command, not package.json script
+# The bug was: 'bun run install' hit /usr/bin/install instead of the CLI
+if grep -q 'dist/cli/index.js install\|bunx oh-my-opencode install' "$LIB_DIR/check-deps.sh"; then
+    pass "oh-my-opencode install uses CLI command (not bun run install)"
+else
+    fail "oh-my-opencode install should use CLI (dist/cli/index.js install), not 'bun run install' which hits /usr/bin/install"
+fi
+
+# Test 32: oh-my-opencode install is preceded by build step
+# The CLI needs to be built first before running dist/cli/index.js
+if grep -B5 'dist/cli/index.js install' "$LIB_DIR/check-deps.sh" | grep -q 'bun run build'; then
+    pass "oh-my-opencode builds CLI before running install command"
+else
+    fail "oh-my-opencode should run 'bun run build' before 'dist/cli/index.js install'"
+fi
+
+# Test 33: oh-my-opencode install passes --no-tui flag
+if grep -q 'install.*--no-tui' "$LIB_DIR/check-deps.sh"; then
+    pass "oh-my-opencode install passes --no-tui flag"
+else
+    fail "oh-my-opencode install should pass --no-tui for non-interactive mode"
+fi
+
+# Test 34: oh-my-opencode install does NOT use 'bun run install' pattern
+# This pattern would hit /usr/bin/install on systems where there's no 'install' script in package.json
+if ! grep -q 'bun run install --no-tui' "$LIB_DIR/check-deps.sh"; then
+    pass "oh-my-opencode does NOT use 'bun run install' pattern (avoids /usr/bin/install)"
+else
+    fail "oh-my-opencode should NOT use 'bun run install' - this pattern hits /usr/bin/install"
+fi
+
+# Test 35: Verify oh-my-opencode package.json has no 'install' script
+# This confirms why 'bun run install' fails - there is no such script
+if [[ -f "$PROJECT_DIR/vendor/oh-my-opencode/package.json" ]]; then
+    if ! jq -e '.scripts.install' "$PROJECT_DIR/vendor/oh-my-opencode/package.json" >/dev/null 2>&1; then
+        pass "oh-my-opencode package.json has no 'install' script (confirms CLI is needed)"
+    else
+        fail "oh-my-opencode has 'install' script in package.json - test assumption wrong"
+    fi
+else
+    # Submodule might not be initialized in test environment
+    pass "oh-my-opencode package.json check skipped (submodule not initialized)"
+fi
+
+# Test 36: oh-my-opencode install uses correct provider flags
+if grep -q 'install.*--claude=\|install.*--gemini=' "$LIB_DIR/check-deps.sh"; then
+    pass "oh-my-opencode install uses provider selection flags"
+else
+    fail "oh-my-opencode install should use provider flags (--claude, --gemini, etc.)"
+fi
+
+echo
 echo "========================================"
 echo "Results: $TESTS_PASSED/$TESTS_RUN passed"
 echo "========================================"

@@ -308,8 +308,11 @@ build_oh_my_opencode() {
     # Install dependencies
     bun install
 
-    # Run the install script with our options
-    bun run install --no-tui --claude=no --chatgpt=no --gemini=yes
+    # Build the CLI first
+    bun run build
+    
+    # Run the install CLI command (not a package.json script)
+    bun run dist/cli/index.js install --no-tui --claude=no --chatgpt=no --gemini=yes
 
     cd "$PROJECT_DIR"
 
