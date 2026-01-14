@@ -253,8 +253,8 @@ build_opencode() {
     ln -sf "$opencode_dir" "$opencode_link"
     
     # Create a wrapper script that runs opencode via bun
-    # Use full path to bun since PATH may not be set up yet
-    # Also export PATH so child processes can find bun
+    # The key challenge: bun needs to find package.json in ~/.local/opencode
+    # but opencode itself should operate on the user's current directory
     cat > "$HOME/.local/bin/opencode" << 'WRAPPER'
 #!/usr/bin/env bash
 # Ensure bun is in PATH for this script and all child processes
@@ -269,7 +269,13 @@ else
     echo "Error: bun not found. Run: curl -fsSL https://bun.sh/install | bash" >&2
     exit 1
 fi
-exec "$BUN" run --cwd "$HOME/.local/opencode" dev "$@"
+
+# Save current directory - opencode uses process.cwd() to determine work dir
+ORIGINAL_CWD="$PWD"
+
+# Change to opencode source directory (where package.json is) to run bun
+# Then use --cwd to restore the original working directory for opencode
+exec "$BUN" run --cwd "$ORIGINAL_CWD" --conditions=browser "$HOME/.local/opencode/packages/opencode/src/index.ts" "$@"
 WRAPPER
     chmod +x "$HOME/.local/bin/opencode"
 
