@@ -736,6 +736,111 @@ else
 fi
 
 # ============================================
+# Setup Scripts Overwrite Existing Directories
+# ============================================
+echo ""
+echo "--- Setup Scripts Overwrite Existing Directories ---"
+
+# Test: setup-relay.sh removes existing directory before clone
+if grep -q 'rm -rf.*INSTALL_DIR\|Removing existing' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
+    pass "setup-relay.sh removes existing directory before clone"
+else
+    fail "setup-relay.sh should remove existing directory before clone"
+fi
+
+# Test: setup-relay.sh does not use git pull (which can fail with conflicts)
+if ! grep -q 'git pull' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
+    pass "setup-relay.sh does not use git pull (avoids conflicts)"
+else
+    fail "setup-relay.sh should not use git pull (can fail with conflicts)"
+fi
+
+# Test: setup-relay.sh always does fresh clone
+if grep -q 'git clone' "$PROJECT_ROOT/scripts/setup-relay.sh" && \
+   ! grep -q 'git pull' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
+    pass "setup-relay.sh always does fresh clone"
+else
+    fail "setup-relay.sh should always do fresh clone"
+fi
+
+# Test: setup-relay.sh logs when removing existing directory
+if grep -q 'Removing existing\|clean install' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
+    pass "setup-relay.sh logs when removing existing directory"
+else
+    fail "setup-relay.sh should log when removing existing directory"
+fi
+
+# Test: setup-client.sh removes existing directory before clone
+if grep -q 'rm -rf.*INSTALL_DIR\|Removing existing' "$PROJECT_ROOT/scripts/setup-client.sh"; then
+    pass "setup-client.sh removes existing directory before clone"
+else
+    fail "setup-client.sh should remove existing directory before clone"
+fi
+
+# Test: setup-client.sh does not use git pull (which can fail with conflicts)
+if ! grep -q 'git pull' "$PROJECT_ROOT/scripts/setup-client.sh"; then
+    pass "setup-client.sh does not use git pull (avoids conflicts)"
+else
+    fail "setup-client.sh should not use git pull (can fail with conflicts)"
+fi
+
+# Test: setup-client.sh always does fresh clone
+if grep -q 'git clone' "$PROJECT_ROOT/scripts/setup-client.sh" && \
+   ! grep -q 'git pull' "$PROJECT_ROOT/scripts/setup-client.sh"; then
+    pass "setup-client.sh always does fresh clone"
+else
+    fail "setup-client.sh should always do fresh clone"
+fi
+
+# Test: setup-client.sh logs when removing existing directory
+if grep -q 'Removing existing\|clean install' "$PROJECT_ROOT/scripts/setup-client.sh"; then
+    pass "setup-client.sh logs when removing existing directory"
+else
+    fail "setup-client.sh should log when removing existing directory"
+fi
+
+# Test: setup-client.sh uses --recurse-submodules for clone
+if grep -q '\-\-recurse-submodules' "$PROJECT_ROOT/scripts/setup-client.sh"; then
+    pass "setup-client.sh uses --recurse-submodules for clone"
+else
+    fail "setup-client.sh should use --recurse-submodules for clone"
+fi
+
+# Test: setup-client.sh uses --shallow-submodules for efficiency
+if grep -q '\-\-shallow-submodules' "$PROJECT_ROOT/scripts/setup-client.sh"; then
+    pass "setup-client.sh uses --shallow-submodules for efficiency"
+else
+    fail "setup-client.sh should use --shallow-submodules for efficiency"
+fi
+
+# ============================================
+# Dockerfile.relay Handles Existing Vendor Directories
+# ============================================
+echo ""
+echo "--- Dockerfile.relay Handles Existing Vendor Directories ---"
+
+# Test: Dockerfile.relay removes existing vendor directories before clone
+if grep -q 'rm -rf vendor/opencode vendor/oh-my-opencode' "$PROJECT_ROOT/Dockerfile.relay"; then
+    pass "Dockerfile.relay removes existing vendor directories before clone"
+else
+    fail "Dockerfile.relay should remove existing vendor directories before clone"
+fi
+
+# Test: Dockerfile.relay clones oh-my-opencode from master branch
+if grep -q '\-\-branch master.*oh-my-opencode\|oh-my-opencode.*--branch master' "$PROJECT_ROOT/Dockerfile.relay"; then
+    pass "Dockerfile.relay clones oh-my-opencode from master branch"
+else
+    fail "Dockerfile.relay should clone oh-my-opencode from master branch (not dev)"
+fi
+
+# Test: Dockerfile.relay has comment explaining master branch requirement
+if grep -q "default branch is 'dev'\|need 'master'" "$PROJECT_ROOT/Dockerfile.relay"; then
+    pass "Dockerfile.relay documents why master branch is needed"
+else
+    fail "Dockerfile.relay should document why master branch is needed"
+fi
+
+# ============================================
 # Bundle Contents Static Verification
 # ============================================
 echo ""
