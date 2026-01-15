@@ -95,7 +95,7 @@ MAX_CONNECTION_FAILURES=3
 
 while [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; do
     sleep 5
-    ((ATTEMPT++))
+    ATTEMPT=$((ATTEMPT + 1))
     
     POLL_RESPONSE=$(curl -sf -X POST "${RELAY_URL}/auth/poll" \
         -H "Content-Type: application/json" \
@@ -104,7 +104,7 @@ while [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; do
     
     # Handle connection failures separately from API errors
     if [[ $CURL_EXIT -ne 0 || -z "$POLL_RESPONSE" ]]; then
-        ((CONNECTION_FAILURES++))
+        CONNECTION_FAILURES=$((CONNECTION_FAILURES + 1))
         if [[ $CONNECTION_FAILURES -ge $MAX_CONNECTION_FAILURES ]]; then
             echo ""
             echo -e "${RED}Lost connection to relay at ${RELAY_URL}${NC}"
