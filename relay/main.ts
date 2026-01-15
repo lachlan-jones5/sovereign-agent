@@ -95,7 +95,7 @@ const REPO_PATH = process.env.REPO_PATH || resolve(import.meta.dir, "..");
 
 // GitHub Copilot constants
 const COPILOT_CLIENT_ID = "Iv1.b507a08c87ecfe98";
-const COPILOT_API_BASE = "https://api.githubcopilot.com";
+const COPILOT_API_BASE_DEFAULT = "https://api.individual.githubcopilot.com";
 const GITHUB_DEVICE_CODE_URL = "https://github.com/login/device/code";
 const GITHUB_ACCESS_TOKEN_URL = "https://github.com/login/oauth/access_token";
 const GITHUB_COPILOT_TOKEN_URL = "https://api.github.com/copilot_internal/v2/token";
@@ -146,6 +146,7 @@ interface Config {
 interface CopilotToken {
   token: string;
   expires: number; // Unix timestamp in ms
+  apiBase: string; // API endpoint from token response
 }
 
 let copilotTokenCache: CopilotToken | null = null;
@@ -200,7 +201,7 @@ function hasGitHubAuth(): boolean {
 }
 
 // Get Copilot API token (refreshes if expired)
-async function getCopilotToken(): Promise<string> {
+async function getCopilotToken(): Promise<{ token: string; apiBase: string }> {
   if (!config.github_oauth_token) {
     throw new Error("GitHub OAuth token not configured. Run device code flow first.");
   }
@@ -208,7 +209,7 @@ async function getCopilotToken(): Promise<string> {
   // Check cache
   if (copilotTokenCache && copilotTokenCache.expires > Date.now()) {
     log("debug", "Using cached Copilot token");
-    return copilotTokenCache.token;
+    return { token: copilotTokenCache.token, apiBase: copilotTokenCache.apiBase };
   }
 
   // Refresh token
@@ -236,16 +237,24 @@ async function getCopilotToken(): Promise<string> {
     throw new Error(`Copilot token refresh failed: ${response.status}`);
   }
 
-  const tokenData = await response.json() as { token: string; expires_at: number };
+  const tokenData = await response.json() as { 
+    token: string; 
+    expires_at: number;
+    endpoints?: { api?: string };
+  };
+  
+  // Extract API base from response, fall back to default
+  const apiBase = tokenData.endpoints?.api || COPILOT_API_BASE_DEFAULT;
   
   // Cache with 5 minute buffer before expiry
   copilotTokenCache = {
     token: tokenData.token,
     expires: tokenData.expires_at * 1000 - 5 * 60 * 1000,
+    apiBase,
   };
 
-  log("info", `Copilot token refreshed, expires at ${new Date(copilotTokenCache.expires).toISOString()}`);
-  return copilotTokenCache.token;
+  log("info", `Copilot token refreshed, expires at ${new Date(copilotTokenCache.expires).toISOString()}, API: ${apiBase}`);
+  return { token: copilotTokenCache.token, apiBase };
 }
 
 // Start device code flow
@@ -989,11 +998,11 @@ echo ""
 
       try {
         // Get Copilot token (refreshes if needed)
-        const copilotToken = await getCopilotToken();
+        const { token: copilotToken, apiBase } = await getCopilotToken();
         
         // Build target URL - map /v1/* to Copilot API
         const apiPath = path.startsWith("/v1/") ? path : `/v1${path}`;
-        const targetUrl = `${COPILOT_API_BASE}${apiPath}${url.search}`;
+        const targetUrl = `${apiBase}${apiPath}${url.search}`;
 
         // Parse request body to extract model for tracking
         let requestBody: string | null = null;
@@ -1027,7 +1036,7 @@ echo ""
         const multiplier = getModelMultiplier(model);
         premiumRequestsUsed += multiplier;
         
-        log("info", `Forwarding: ${method} ${path} -> ${COPILOT_API_BASE} (model: ${model}, multiplier: ${multiplier}x)`);
+        log("info", `Forwarding: ${method} ${path} -> ${apiBase} (model: ${model}, multiplier: ${multiplier}x)`);
 
         // Forward the request
         const response = await fetch(targetUrl, {
@@ -1084,7 +1093,7 @@ echo ""
 });
 
 log("info", `Relay listening on http://${RELAY_HOST}:${RELAY_PORT}`);
-log("info", `Backend: GitHub Copilot API (${COPILOT_API_BASE})`);
+log("info", `Backend: GitHub Copilot API (dynamic endpoint from token)`);
 log("info", `Authenticated: ${hasGitHubAuth()}`);
 if (!hasGitHubAuth()) {
   log("info", `To authenticate, visit: http://${RELAY_HOST}:${RELAY_PORT}/auth/device`);
