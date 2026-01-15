@@ -5,8 +5,10 @@
 #   ./scripts/auth-relay.sh [relay-url]
 #
 # Examples:
-#   ./scripts/auth-relay.sh                    # Uses http://localhost:8080
-#   ./scripts/auth-relay.sh http://localhost:8081
+#   ./scripts/auth-relay.sh                         # Uses http://localhost:8080
+#   ./scripts/auth-relay.sh http://localhost:8081   # Explicit URL
+#   RELAY_PORT=8081 ./scripts/auth-relay.sh         # Custom port
+#   RELAY_HOST=192.168.1.10 ./scripts/auth-relay.sh # Custom host
 #   RELAY_URL=http://pi:8080 ./scripts/auth-relay.sh
 
 set -e
@@ -19,7 +21,11 @@ BLUE='\033[0;34m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-RELAY_URL="${1:-${RELAY_URL:-http://localhost:8080}}"
+# Build URL from components or use explicit URL
+RELAY_HOST="${RELAY_HOST:-localhost}"
+RELAY_PORT="${RELAY_PORT:-8080}"
+DEFAULT_URL="http://${RELAY_HOST}:${RELAY_PORT}"
+RELAY_URL="${1:-${RELAY_URL:-$DEFAULT_URL}}"
 
 echo -e "${BLUE}${BOLD}"
 echo "╔═══════════════════════════════════════════════════╗"
