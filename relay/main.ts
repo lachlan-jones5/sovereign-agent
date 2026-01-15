@@ -1000,8 +1000,8 @@ echo ""
         // Get Copilot token (refreshes if needed)
         const { token: copilotToken, apiBase } = await getCopilotToken();
         
-        // Build target URL - map /v1/* to Copilot API
-        const apiPath = path.startsWith("/v1/") ? path : `/v1${path}`;
+        // Build target URL - strip /v1 prefix as Copilot API doesn't use it
+        const apiPath = path.startsWith("/v1/") ? path.slice(3) : path;
         const targetUrl = `${apiBase}${apiPath}${url.search}`;
 
         // Parse request body to extract model for tracking
