@@ -74,6 +74,28 @@ ssh -R 8081:localhost:8081 devvm -N &
 curl -fsSL http://localhost:8081/setup | bash
 ```
 
+This installs OpenCode with the **premium** tier by default (best quality, uses Claude Opus 4.5 for complex tasks).
+
+#### Choose a Different Tier
+
+Select a tier based on your budget and quality needs:
+
+| Tier | Command | Primary Model | Cost |
+|------|---------|---------------|------|
+| **Free** | `curl -fsSL http://localhost:8081/setup?tier=free \| bash` | GPT-4.1, GPT-4o | 0 premium requests |
+| **Frugal** | `curl -fsSL http://localhost:8081/setup?tier=frugal \| bash` | Claude Sonnet 4.5 | ~50-70% cheaper |
+| **Premium** | `curl -fsSL http://localhost:8081/setup?tier=premium \| bash` | Claude Opus 4.5 | Best quality |
+
+**Tier Details:**
+
+- **Free** - Uses only 0x multiplier models (GPT-5 mini, GPT-4.1, GPT-4o). Unlimited usage within your Copilot plan. Best for cost-conscious users or when you're running low on premium requests.
+
+- **Frugal** - Balances cost and quality. Primary agents use Claude Sonnet 4.5 (1x), subagents use Claude Haiku 4.5 (0.33x). Critical tasks (security review, planning) still use Sonnet.
+
+- **Premium** - Maximum quality. Core agents use Claude Opus 4.5 (3x) for best reasoning. Standard subagents use Sonnet (1x), utilities use Haiku (0.33x).
+
+You can switch tiers anytime by re-running the setup command with a different `?tier=` parameter.
+
 ### 5. Run OpenCode
 
 ```bash
@@ -123,7 +145,7 @@ The Client VM sees `localhost:8081` which routes through your laptop to the rela
 | `/stats` | Usage statistics, premium requests used |
 | `/auth/device` | Start GitHub device code flow (browser) |
 | `/auth/status` | Check authentication status |
-| `/setup` | Client setup script |
+| `/setup` | Client setup script (`?tier=free\|frugal\|premium`) |
 | `/bundle.tar.gz` | Download client bundle |
 | `/v1/*` | Proxy to GitHub Copilot API |
 
