@@ -38,7 +38,15 @@ cd relay && bun run main.ts
 
 ### 2. Authenticate with GitHub Copilot
 
-Open your browser and visit the relay's auth page:
+**Option A: Headless (CLI) - for servers without a browser:**
+
+```bash
+./scripts/auth-relay.sh
+```
+
+This will display a user code and URL. Go to `https://github.com/login/device` on any device, enter the code, and authorize. The script polls for completion and saves the token automatically.
+
+**Option B: Browser - if you have access to a browser:**
 
 ```
 http://localhost:8080/auth/device

@@ -44,9 +44,16 @@ cd relay && bun run main.ts
 
 ### 2. Authenticate with GitHub Copilot
 
-Open your browser and go to: `http://localhost:8080/auth/device`
+**Headless (CLI):**
+```bash
+./scripts/auth-relay.sh
+```
 
-This will guide you through GitHub's device code flow. The OAuth token is stored securely on your relay server.
+This shows you a code to enter at github.com/login/device. Works over SSH.
+
+**Or with a browser:** Open `http://localhost:8080/auth/device`
+
+The OAuth token is stored securely on your relay server.
 
 ### 3. Create tunnels (laptop)
 
