@@ -44,11 +44,16 @@ fi
 
 # Start device code flow
 echo -e "${YELLOW}Starting device code flow...${NC}"
-DEVICE_RESPONSE=$(curl -sf -X POST "${RELAY_URL}/auth/device" 2>/dev/null)
+DEVICE_RESPONSE=$(curl -sf -X POST "${RELAY_URL}/auth/device" 2>/dev/null || true)
 
 if [[ -z "$DEVICE_RESPONSE" ]]; then
     echo -e "${RED}Error: Could not connect to relay at ${RELAY_URL}${NC}"
-    echo "Make sure the relay is running and accessible."
+    echo ""
+    echo "Make sure the relay is running:"
+    echo "  cd ~/sovereign-agent/relay && bun run main.ts"
+    echo ""
+    echo "Or start it with the setup script:"
+    echo "  curl -fsSL .../scripts/setup-relay.sh | bash"
     exit 1
 fi
 
