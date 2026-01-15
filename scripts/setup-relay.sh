@@ -115,9 +115,29 @@ EOF
     log_info "Created $INSTALL_DIR/config.json"
 }
 
+# Kill any existing process on the relay port
+kill_existing() {
+    local pid
+    pid=$(lsof -ti ":$RELAY_PORT" 2>/dev/null || true)
+    if [[ -n "$pid" ]]; then
+        log_warn "Port $RELAY_PORT is in use by PID $pid, killing it..."
+        kill "$pid" 2>/dev/null || true
+        sleep 1
+        # Force kill if still running
+        if kill -0 "$pid" 2>/dev/null; then
+            log_warn "Process still running, sending SIGKILL..."
+            kill -9 "$pid" 2>/dev/null || true
+            sleep 1
+        fi
+        log_info "Cleared port $RELAY_PORT"
+    fi
+}
+
 # Start the relay
 start_relay() {
     cd "$INSTALL_DIR/relay"
+    
+    kill_existing
     
     log_info "Starting relay server on http://$RELAY_HOST:$RELAY_PORT"
     echo ""
