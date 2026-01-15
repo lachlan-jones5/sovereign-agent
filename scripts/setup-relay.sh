@@ -1,109 +1,107 @@
-#!/bin/bash
-# setup-relay.sh - Quick relay server setup
+#!/usr/bin/env bash
+# setup-relay.sh - One-liner setup for Sovereign Agent relay server
 #
-# Usage (download and run):
-#   bash <(curl -fsSL https://raw.githubusercontent.com/lachlan-jones5/sovereign-agent/master/scripts/setup-relay.sh)
+# Usage:
+#   curl -fsSL https://raw.githubusercontent.com/lachlan-jones5/sovereign-agent/master/scripts/setup-relay.sh | bash
 #
-# Or with API key (non-interactive):
-#   OPENROUTER_API_KEY=sk-or-... bash <(curl -fsSL https://raw.githubusercontent.com/lachlan-jones5/sovereign-agent/master/scripts/setup-relay.sh)
-#
-# Or with custom port:
-#   RELAY_PORT=8081 OPENROUTER_API_KEY=sk-or-... bash <(curl -fsSL ...)
-#
-# Or with custom host binding (0.0.0.0 for external access):
-#   RELAY_HOST=0.0.0.0 RELAY_PORT=8081 OPENROUTER_API_KEY=sk-or-... bash <(curl -fsSL ...)
-#
-# This script:
-#   1. Clones the repo into current directory (no submodules - fast)
-#   2. Prompts for your OpenRouter API key (or uses env var)
-#   3. Creates config.json
-#   4. Starts the relay
+# Environment variables:
+#   RELAY_PORT  - Port to listen on (default: 8080)
+#   RELAY_HOST  - Host to bind to (default: 127.0.0.1, use 0.0.0.0 for external)
+#   INSTALL_DIR - Where to install (default: ~/sovereign-agent)
 
-set -euo pipefail
+set -e
 
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+
+# Configuration
+INSTALL_DIR="${INSTALL_DIR:-$HOME/sovereign-agent}"
 RELAY_PORT="${RELAY_PORT:-8080}"
 RELAY_HOST="${RELAY_HOST:-127.0.0.1}"
-INSTALL_DIR="${INSTALL_DIR:-$PWD/sovereign-agent}"
-API_KEY="${OPENROUTER_API_KEY:-}"
+REPO_URL="https://github.com/lachlan-jones5/sovereign-agent.git"
 
-echo "=== Sovereign Agent Relay Setup ==="
-echo ""
-echo "Installing to: $INSTALL_DIR"
-echo ""
+echo -e "${BLUE}"
+echo "╔═══════════════════════════════════════════════════╗"
+echo "║       Sovereign Agent Relay Server Setup          ║"
+echo "╚═══════════════════════════════════════════════════╝"
+echo -e "${NC}"
 
 # Check for required tools
-if ! command -v git &>/dev/null; then
-    echo "Error: git is required"
-    exit 1
-fi
-
-# Check for Bun or Docker
-HAS_BUN=false
-HAS_DOCKER=false
-if command -v bun &>/dev/null; then
-    HAS_BUN=true
-fi
-if command -v docker &>/dev/null; then
-    HAS_DOCKER=true
-fi
-
-if ! $HAS_BUN && ! $HAS_DOCKER; then
-    echo "Error: Either 'bun' or 'docker' is required"
-    echo ""
-    echo "Install Bun:   curl -fsSL https://bun.sh/install | bash"
-    echo "Install Docker: https://docs.docker.com/get-docker/"
-    exit 1
-fi
-
-# Clone repo (remove existing directory for clean state)
-if [[ -d "$INSTALL_DIR" ]]; then
-    echo "Removing existing $INSTALL_DIR for clean install..."
-    rm -rf "$INSTALL_DIR"
-fi
-echo "Cloning sovereign-agent..."
-git clone --quiet https://github.com/lachlan-jones5/sovereign-agent.git "$INSTALL_DIR"
-cd "$INSTALL_DIR"
-
-# Initialize submodules (required for bundle endpoint to work)
-echo "Initializing submodules..."
-git submodule update --init --recursive --depth 1 || {
-    echo ""
-    echo "Warning: Submodule initialization failed."
-    echo "The bundle endpoint will not work until submodules are initialized."
-    echo "Try running: git submodule update --init --recursive"
-    echo ""
+check_command() {
+    if ! command -v "$1" &>/dev/null; then
+        return 1
+    fi
+    return 0
 }
 
-# Get API key
-if [[ -f config.json ]] && grep -q '"openrouter_api_key"' config.json; then
-    echo "config.json already exists"
-else
-    # If no API key provided, try to read from terminal
-    if [[ -z "$API_KEY" ]]; then
-        echo ""
-        echo "Enter your OpenRouter API key (from https://openrouter.ai/keys):"
-        # Read from /dev/tty to work even when script is piped or in process substitution
-        if ! read -r API_KEY </dev/tty 2>/dev/null; then
-            echo ""
-            echo "Error: Cannot read API key interactively."
-            echo "Provide it via environment variable instead:"
-            echo ""
-            echo "  OPENROUTER_API_KEY=sk-or-... bash <(curl -fsSL ...)"
-            exit 1
-        fi
+# Install Bun if not present
+install_bun() {
+    if check_command bun; then
+        log_info "Bun already installed: $(bun --version)"
+        return 0
     fi
     
-    if [[ -z "$API_KEY" ]]; then
-        echo "Error: API key is required"
+    log_info "Installing Bun..."
+    curl -fsSL https://bun.sh/install | bash
+    
+    # Source the new PATH
+    export BUN_INSTALL="$HOME/.bun"
+    export PATH="$BUN_INSTALL/bin:$PATH"
+    
+    if check_command bun; then
+        log_info "Bun installed successfully: $(bun --version)"
+    else
+        log_error "Failed to install Bun"
         exit 1
     fi
+}
+
+# Install Git if not present
+check_git() {
+    if check_command git; then
+        log_info "Git already installed: $(git --version)"
+        return 0
+    fi
     
-    # Create minimal config
-    cat > config.json <<EOF
+    log_warn "Git not found. Please install git first:"
+    echo "  Ubuntu/Debian: sudo apt-get install git"
+    echo "  macOS: xcode-select --install"
+    echo "  Alpine: apk add git"
+    exit 1
+}
+
+# Clone or update repository
+setup_repo() {
+    if [[ -d "$INSTALL_DIR/.git" ]]; then
+        log_info "Updating existing installation..."
+        cd "$INSTALL_DIR"
+        git pull --ff-only
+        git submodule update --init --recursive
+    else
+        log_info "Cloning repository to $INSTALL_DIR..."
+        git clone --recurse-submodules "$REPO_URL" "$INSTALL_DIR"
+        cd "$INSTALL_DIR"
+    fi
+}
+
+# Create config if not exists
+setup_config() {
+    if [[ -f "$INSTALL_DIR/config.json" ]]; then
+        log_info "Config file already exists"
+        return 0
+    fi
+    
+    log_info "Creating config.json..."
+    cat > "$INSTALL_DIR/config.json" << EOF
 {
-  "openrouter_api_key": "$API_KEY",
-  "site_url": "https://github.com/lachlan-jones5/sovereign-agent",
-  "site_name": "SovereignAgent",
   "relay": {
     "enabled": true,
     "mode": "server",
@@ -111,61 +109,40 @@ else
   }
 }
 EOF
-    echo "Created config.json"
-fi
+    log_info "Created $INSTALL_DIR/config.json"
+}
 
-# Start relay
-echo ""
-echo "Starting relay on port $RELAY_PORT..."
-
-# Kill any existing relay process to free the port
-# Check both localhost and 0.0.0.0, and also check if port is in use
-if curl -s "http://localhost:$RELAY_PORT/health" &>/dev/null || \
-   curl -s "http://127.0.0.1:$RELAY_PORT/health" &>/dev/null || \
-   ss -tlnp 2>/dev/null | grep -q ":$RELAY_PORT " || \
-   netstat -tlnp 2>/dev/null | grep -q ":$RELAY_PORT "; then
-    echo "Port $RELAY_PORT in use - stopping existing processes..."
-    # Try without sudo first, then with sudo if available
-    pkill -f 'bun.*main.ts' 2>/dev/null || sudo pkill -f 'bun.*main.ts' 2>/dev/null || true
-    docker stop sovereign-relay 2>/dev/null || true
-    docker rm sovereign-relay 2>/dev/null || true
-    sleep 2
+# Start the relay
+start_relay() {
+    cd "$INSTALL_DIR/relay"
     
-    # Verify port is free
-    if ss -tlnp 2>/dev/null | grep -q ":$RELAY_PORT " || \
-       netstat -tlnp 2>/dev/null | grep -q ":$RELAY_PORT "; then
-        echo "ERROR: Port $RELAY_PORT still in use. Please manually stop the process:"
-        echo "  sudo lsof -i :$RELAY_PORT"
-        echo "  sudo kill <PID>"
-        exit 1
-    fi
-fi
-
-if $HAS_DOCKER; then
-    echo "Using Docker..."
-    # Use --build --no-cache to ensure fresh build with latest code
-    RELAY_HOST=$RELAY_HOST RELAY_PORT=$RELAY_PORT docker compose -f docker-compose.relay.yml up -d --build --pull always
+    log_info "Starting relay server on http://$RELAY_HOST:$RELAY_PORT"
     echo ""
-    echo "Relay started! Check status:"
-    echo "  docker logs sovereign-relay"
-    echo "  curl http://localhost:$RELAY_PORT/health"
-elif $HAS_BUN; then
-    echo "Using Bun..."
-    cd relay
-    
-    RELAY_HOST=$RELAY_HOST RELAY_PORT=$RELAY_PORT ./start-relay.sh daemon
-    sleep 2
-    
+    echo -e "${GREEN}═══════════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}  Relay server starting!${NC}"
     echo ""
-    echo "Relay started! Check status:"
-    echo "  curl http://localhost:$RELAY_PORT/health"
-fi
+    echo -e "  ${BLUE}Next steps:${NC}"
+    echo "  1. Open http://localhost:$RELAY_PORT/auth/device in your browser"
+    echo "  2. Follow the GitHub device code flow to authenticate"
+    echo "  3. Set up SSH tunnels from your laptop"
+    echo "  4. Install client on your VM with:"
+    echo "     curl -fsSL http://localhost:$RELAY_PORT/setup | bash"
+    echo ""
+    echo -e "${GREEN}═══════════════════════════════════════════════════${NC}"
+    echo ""
+    
+    export RELAY_HOST="$RELAY_HOST"
+    export RELAY_PORT="$RELAY_PORT"
+    exec bun run main.ts
+}
 
-echo ""
-echo "=== Setup Complete ==="
-echo ""
-echo "Next step: On your laptop, create a reverse tunnel to your Client VM:"
-echo ""
-echo "  ssh -R 8080:$(hostname):$RELAY_PORT devvm -N"
-echo ""
-echo "Replace 'devvm' with your Client VM's SSH host."
+# Main
+main() {
+    check_git
+    install_bun
+    setup_repo
+    setup_config
+    start_relay
+}
+
+main "$@"

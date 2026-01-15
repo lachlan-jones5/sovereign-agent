@@ -29,13 +29,16 @@ Privacy-compliant AI coding environment. Keep your GitHub Copilot credentials se
 
 ### 1. Set up the relay server (Pi/VPS)
 
+**One-liner:**
 ```bash
-# Clone and start the relay
+curl -fsSL https://raw.githubusercontent.com/lachlan-jones5/sovereign-agent/master/scripts/setup-relay.sh | bash
+```
+
+**Or manually:**
+```bash
 git clone https://github.com/lachlan-jones5/sovereign-agent.git
 cd sovereign-agent
 cp config.json.example config.json
-
-# Start the relay
 cd relay && bun run main.ts
 ```
 
