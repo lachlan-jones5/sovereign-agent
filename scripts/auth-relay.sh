@@ -90,6 +90,8 @@ echo ""
 # Poll for completion
 MAX_ATTEMPTS=60  # 5 minutes with 5-second intervals
 ATTEMPT=0
+CONNECTION_FAILURES=0
+MAX_CONNECTION_FAILURES=3
 
 while [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; do
     sleep 5
@@ -97,7 +99,24 @@ while [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; do
     
     POLL_RESPONSE=$(curl -sf -X POST "${RELAY_URL}/auth/poll" \
         -H "Content-Type: application/json" \
-        -d "{\"flow_id\":\"${FLOW_ID}\"}" 2>/dev/null || echo '{"status":"error"}')
+        -d "{\"flow_id\":\"${FLOW_ID}\"}" 2>/dev/null)
+    CURL_EXIT=$?
+    
+    # Handle connection failures separately from API errors
+    if [[ $CURL_EXIT -ne 0 || -z "$POLL_RESPONSE" ]]; then
+        ((CONNECTION_FAILURES++))
+        if [[ $CONNECTION_FAILURES -ge $MAX_CONNECTION_FAILURES ]]; then
+            echo ""
+            echo -e "${RED}Lost connection to relay at ${RELAY_URL}${NC}"
+            echo "Make sure the relay is still running."
+            exit 1
+        fi
+        echo -n "?"  # Show connection issue
+        continue
+    fi
+    
+    # Reset connection failure counter on successful request
+    CONNECTION_FAILURES=0
     
     STATUS=$(echo "$POLL_RESPONSE" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
     
