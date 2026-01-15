@@ -1,0 +1,210 @@
+{
+  // =============================================================================
+  // FRUGAL TIER CONFIGURATION
+  // =============================================================================
+  // Balanced cost/quality. Uses premium models only where critical (security,
+  // task planning), efficient models everywhere else.
+  //
+  // MULTIPLIER REFERENCE (as of 2025):
+  //   0x (FREE):  gpt-4.1, gpt-4o, gpt-5-mini
+  //   0.25x:      grok-code-fast-1
+  //   0.33x:      claude-haiku-4.5, gemini-3-flash-preview
+  //   1x:         claude-sonnet-4.5, gemini-3-pro-preview
+  //   3x:         claude-opus-4.5
+  //
+  // STRATEGY: Sonnet for main work, Haiku/free for utilities, Opus only for critical
+  // =============================================================================
+
+  "$schema": "https://opencode.ai/config.json",
+  
+  "compaction": {
+    "auto": false,
+    "prune": true,
+    "hybrid": {
+      "enabled": true,
+      "preserve_agent_context": true
+    }
+  },
+
+  "provider": {
+    "github-copilot": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "GitHub Copilot (via Relay)",
+      "options": {
+        "baseURL": "http://localhost:${RELAY_PORT}/v1"
+      },
+      "models": {
+        "gpt-5-mini": { "name": "GPT-5 Mini [FREE]", "limit": { "context": 128000, "output": 16384 } },
+        "gpt-4.1": { "name": "GPT-4.1 [FREE]", "limit": { "context": 128000, "output": 16384 } },
+        "gpt-4o": { "name": "GPT-4o [FREE]", "limit": { "context": 128000, "output": 16384 } },
+        "claude-haiku-4.5": { "name": "Claude Haiku 4.5 [0.33x]", "limit": { "context": 200000, "output": 8192 } },
+        "grok-code-fast-1": { "name": "Grok Code Fast 1 [0.25x]", "limit": { "context": 128000, "output": 16384 } },
+        "gemini-3-flash-preview": { "name": "Gemini 3 Flash [0.33x]", "limit": { "context": 1000000, "output": 65536 } },
+        "claude-sonnet-4.5": { "name": "Claude Sonnet 4.5 [1x]", "limit": { "context": 200000, "output": 16384 } },
+        "gemini-3-pro-preview": { "name": "Gemini 3 Pro [1x]", "limit": { "context": 1000000, "output": 65536 } },
+        "gpt-5": { "name": "GPT-5 [1x]", "limit": { "context": 128000, "output": 16384 } },
+        "o3": { "name": "o3 [1x]", "limit": { "context": 128000, "output": 100000 } },
+        "o3-mini": { "name": "o3-mini [1x]", "limit": { "context": 128000, "output": 65536 } },
+        "o4-mini": { "name": "o4-mini [1x]", "limit": { "context": 128000, "output": 65536 } },
+        "claude-opus-4.5": { "name": "Claude Opus 4.5 [3x]", "limit": { "context": 200000, "output": 16384 } }
+      }
+    }
+  },
+  
+  "model": "github-copilot/claude-sonnet-4.5",
+
+  "agent": {
+    // =========================================================================
+    // PRIMARY AGENTS - Use Sonnet (1x) for quality at reasonable cost
+    // =========================================================================
+
+    "openagent": {
+      "description": "Universal agent for queries, tasks, and workflow coordination",
+      "mode": "primary",
+      "model": "github-copilot/claude-sonnet-4.5"
+    },
+    "opencoder": {
+      "description": "Multi-language coding specialist with plan-approve-execute workflow",
+      "mode": "primary",
+      "model": "github-copilot/claude-sonnet-4.5"
+    },
+    "codebase-agent": {
+      "description": "Primary development agent for multi-language codebases",
+      "mode": "primary",
+      "model": "github-copilot/claude-sonnet-4.5"
+    },
+    "backend-specialist": {
+      "description": "API design, database architecture, and server-side development",
+      "mode": "primary",
+      "model": "github-copilot/claude-sonnet-4.5"
+    },
+    "frontend-specialist": {
+      "description": "UI design with design systems, themes, and animations",
+      "mode": "primary",
+      "model": "github-copilot/claude-sonnet-4.5"
+    },
+    "devops-specialist": {
+      "description": "CI/CD, infrastructure, Docker, Kubernetes, Terraform",
+      "mode": "primary",
+      "model": "github-copilot/gemini-3-pro-preview"
+    },
+    "system-builder": {
+      "description": "Meta-level generator for custom AI architectures and agent systems",
+      "mode": "primary",
+      "model": "github-copilot/claude-sonnet-4.5"
+    },
+    "repo-manager": {
+      "description": "Repository management with lazy context loading and smart delegation",
+      "mode": "primary",
+      "model": "github-copilot/claude-sonnet-4.5"
+    },
+    "copywriter": {
+      "description": "Marketing copy, blog posts, and persuasive content creation",
+      "mode": "primary",
+      "model": "github-copilot/claude-sonnet-4.5"
+    },
+    "technical-writer": {
+      "description": "Technical documentation, API docs, and developer guides",
+      "mode": "primary",
+      "model": "github-copilot/claude-sonnet-4.5"
+    },
+    "data-analyst": {
+      "description": "Data analysis, visualization recommendations, and insights",
+      "mode": "primary",
+      "model": "github-copilot/claude-sonnet-4.5"
+    },
+
+    // =========================================================================
+    // SUBAGENTS - Mix of Haiku (cheap) and Sonnet (quality where needed)
+    // =========================================================================
+
+    "coder-agent": {
+      "description": "Executes coding subtasks following plans from primary agents",
+      "mode": "subagent",
+      "model": "github-copilot/claude-haiku-4.5"
+    },
+    "reviewer": {
+      "description": "Code review, security analysis, and quality assurance",
+      "mode": "subagent",
+      // CRITICAL - Security reviews need best model even in frugal mode
+      "model": "github-copilot/claude-sonnet-4.5"
+    },
+    "tester": {
+      "description": "Test authoring and TDD with AAA pattern",
+      "mode": "subagent",
+      "model": "github-copilot/claude-haiku-4.5"
+    },
+    "build-agent": {
+      "description": "Type checking and build validation",
+      "mode": "subagent",
+      "model": "github-copilot/claude-haiku-4.5"
+    },
+    "codebase-pattern-analyst": {
+      "description": "Finds code patterns and examples in codebase",
+      "mode": "subagent",
+      "model": "github-copilot/claude-haiku-4.5"
+    },
+    "task-manager": {
+      "description": "Complex task breakdown into atomic subtasks with dependencies",
+      "mode": "subagent",
+      // CRITICAL - Task decomposition affects all downstream work
+      "model": "github-copilot/claude-sonnet-4.5"
+    },
+    "documentation": {
+      "description": "Documentation authoring for README, specs, developer docs",
+      "mode": "subagent",
+      "model": "github-copilot/claude-haiku-4.5"
+    },
+    "context-retriever": {
+      "description": "Context search and retrieval for finding relevant files and standards",
+      "mode": "subagent",
+      "model": "github-copilot/claude-haiku-4.5"
+    },
+    "domain-analyzer": {
+      "description": "Analyzes domains to identify concepts, agents, and context structure",
+      "mode": "subagent",
+      "model": "github-copilot/claude-haiku-4.5"
+    },
+    "agent-generator": {
+      "description": "Generates XML-optimized agent files following research-backed patterns",
+      "mode": "subagent",
+      "model": "github-copilot/claude-haiku-4.5"
+    },
+    "context-organizer": {
+      "description": "Organizes and generates context files for knowledge management",
+      "mode": "subagent",
+      "model": "github-copilot/claude-haiku-4.5"
+    },
+    "workflow-designer": {
+      "description": "Designs workflow definitions with context dependencies",
+      "mode": "subagent",
+      "model": "github-copilot/claude-haiku-4.5"
+    },
+    "command-creator": {
+      "description": "Creates custom slash commands with clear syntax and examples",
+      "mode": "subagent",
+      "model": "github-copilot/claude-haiku-4.5"
+    },
+    "image-specialist": {
+      "description": "Image generation and editing using Gemini AI",
+      "mode": "subagent",
+      "model": "github-copilot/gemini-3-flash-preview"
+    },
+
+    // =========================================================================
+    // UTILITY AGENTS - All use Haiku or free models
+    // =========================================================================
+    "title": {
+      "description": "Session title generation",
+      "model": "github-copilot/claude-haiku-4.5"
+    },
+    "summary": {
+      "description": "Session summary generation",
+      "model": "github-copilot/claude-haiku-4.5"
+    },
+    "compaction": {
+      "description": "Context compaction agent",
+      "model": "github-copilot/claude-haiku-4.5"
+    }
+  }
+}

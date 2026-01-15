@@ -628,18 +628,29 @@ Bun.serve({
     }
 
     // Setup script endpoint - serves a script that downloads bundle via tunnel
+    // Supports tier parameter: /setup?tier=free|frugal|premium (default: premium)
     if (path === "/setup") {
+      // Parse tier from query string
+      const tier = url.searchParams.get("tier") || "premium";
+      const validTiers = ["free", "frugal", "premium"];
+      const selectedTier = validTiers.includes(tier) ? tier : "premium";
+      
+      log("info", `Setup requested with tier: ${selectedTier}`);
+      
       const setupScript = `#!/bin/bash
 # Sovereign Agent Client Setup (GitHub Copilot Edition)
 # This script downloads everything through the tunnel - no direct internet access needed.
+# Tier: ${selectedTier}
 
 set -uo pipefail
 
-# Use the port this script was fetched from (injected by relay), or env var, or default
+# Configuration
+TIER="${selectedTier}"
 RELAY_PORT="\${RELAY_PORT:-${RELAY_PORT}}"
 INSTALL_DIR="\${INSTALL_DIR:-\$PWD/sovereign-agent}"
 
 echo "=== Sovereign Agent Client Setup (GitHub Copilot) ==="
+echo "Tier: \$TIER"
 echo ""
 
 # Check the tunnel is working
@@ -748,6 +759,12 @@ if ! tar -xzf "\$BUNDLE_TMP"; then
 fi
 rm -f "\$BUNDLE_TMP"
 
+# Verify bundle was extracted correctly
+if [[ ! -f install.sh ]]; then
+    echo "Error: Bundle extraction failed - install.sh not found"
+    exit 1
+fi
+
 # Create client config for relay mode
 echo "Creating relay client config..."
 
@@ -764,126 +781,54 @@ cat > config.json <<CONFIGEOF
 }
 CONFIGEOF
 
-# Create OpenCode config that uses the relay as a custom provider
+# Setup OpenCode configuration directory
+echo "Setting up OpenCode configuration (\$TIER tier)..."
 mkdir -p "\$HOME/.config/opencode"
-cat > "\$HOME/.config/opencode/opencode.jsonc" <<OPENCODEEOF
-{
-  "\\$schema": "https://opencode.ai/config.json",
-  
-  // Use the relay as a custom OpenAI-compatible provider
-  "provider": {
-    "sovereign-relay": {
-      "npm": "@ai-sdk/openai-compatible",
-      "name": "Sovereign Relay (GitHub Copilot)",
-      "options": {
-        "baseURL": "http://localhost:\$RELAY_PORT/v1"
-      },
-      "models": {
-        // ============================================
-        // FREE MODELS (0x multiplier - unlimited use)
-        // ============================================
-        "gpt-5-mini": {
-          "name": "GPT-5 Mini [FREE]",
-          "limit": { "context": 128000, "output": 16384 }
-        },
-        "gpt-4.1": {
-          "name": "GPT-4.1 [FREE]",
-          "limit": { "context": 128000, "output": 16384 }
-        },
-        "gpt-4o": {
-          "name": "GPT-4o [FREE]",
-          "limit": { "context": 128000, "output": 16384 }
-        },
-        
-        // ============================================
-        // VERY CHEAP MODELS (0.25-0.33x multiplier)
-        // ============================================
-        "claude-haiku-4.5": {
-          "name": "Claude Haiku 4.5 [0.33x]",
-          "limit": { "context": 200000, "output": 8192 }
-        },
-        "grok-code-fast-1": {
-          "name": "Grok Code Fast 1 [0.25x]",
-          "limit": { "context": 128000, "output": 16384 }
-        },
-        "gemini-3-flash-preview": {
-          "name": "Gemini 3 Flash [0.33x]",
-          "limit": { "context": 1000000, "output": 65536 }
-        },
-        "gpt-5.1-codex-mini": {
-          "name": "GPT-5.1 Codex Mini [0.33x]",
-          "limit": { "context": 128000, "output": 16384 }
-        },
-        
-        // ============================================
-        // STANDARD MODELS (1x multiplier)
-        // ============================================
-        "claude-sonnet-4.5": {
-          "name": "Claude Sonnet 4.5 [1x]",
-          "limit": { "context": 200000, "output": 16384 }
-        },
-        "gpt-5": {
-          "name": "GPT-5 [1x]",
-          "limit": { "context": 128000, "output": 16384 }
-        },
-        "gpt-5.1": {
-          "name": "GPT-5.1 [1x]",
-          "limit": { "context": 128000, "output": 16384 }
-        },
-        "gpt-5.2": {
-          "name": "GPT-5.2 [1x]",
-          "limit": { "context": 128000, "output": 16384 }
-        },
-        "gpt-5-codex": {
-          "name": "GPT-5 Codex [1x]",
-          "limit": { "context": 128000, "output": 16384 }
-        },
-        "gpt-5.1-codex": {
-          "name": "GPT-5.1 Codex [1x]",
-          "limit": { "context": 128000, "output": 16384 }
-        },
-        "gpt-5.1-codex-max": {
-          "name": "GPT-5.1 Codex Max [1x]",
-          "limit": { "context": 128000, "output": 16384 }
-        },
-        "gemini-3-pro-preview": {
-          "name": "Gemini 3 Pro [1x]",
-          "limit": { "context": 1000000, "output": 65536 }
-        },
-        "o3": {
-          "name": "o3 [1x]",
-          "limit": { "context": 128000, "output": 100000 }
-        },
-        "o3-mini": {
-          "name": "o3-mini [1x]",
-          "limit": { "context": 128000, "output": 65536 }
-        },
-        "o4-mini": {
-          "name": "o4-mini [1x]", 
-          "limit": { "context": 128000, "output": 65536 }
-        },
-        
-        // ============================================
-        // PREMIUM MODELS (3x multiplier)
-        // ============================================
-        "claude-opus-4.5": {
-          "name": "Claude Opus 4.5 [3x] - Best Quality",
-          "limit": { "context": 200000, "output": 16384 }
-        }
-      }
-    }
-  },
-  
-  // Default to a free model
-  "model": "sovereign-relay/gpt-5-mini"
-}
-OPENCODEEOF
 
-# Verify bundle was extracted correctly
-if [[ ! -f install.sh ]]; then
-    echo "Error: Bundle extraction failed - install.sh not found"
-    exit 1
+# Copy the appropriate tier config file
+CONFIG_FILE="configs/opencode.\${TIER}.jsonc"
+if [[ -f "\$CONFIG_FILE" ]]; then
+    # Replace the RELAY_PORT placeholder in the config
+    sed "s/\\\${RELAY_PORT}/\$RELAY_PORT/g" "\$CONFIG_FILE" > "\$HOME/.config/opencode/opencode.jsonc"
+    echo "Installed \$TIER tier configuration"
+else
+    echo "Warning: Config file \$CONFIG_FILE not found, using default"
+    # Fallback to premium if specific tier not found
+    if [[ -f "configs/opencode.premium.jsonc" ]]; then
+        sed "s/\\\${RELAY_PORT}/\$RELAY_PORT/g" "configs/opencode.premium.jsonc" > "\$HOME/.config/opencode/opencode.jsonc"
+    fi
 fi
+
+# Copy OpenAgents agent definitions
+echo "Installing OpenAgents agents and subagents..."
+OPENAGENTS_DIR="vendor/OpenAgents/.opencode"
+
+if [[ -d "\$OPENAGENTS_DIR/agent" ]]; then
+    # Copy agent directory (primary agents and subagents)
+    cp -r "\$OPENAGENTS_DIR/agent" "\$HOME/.config/opencode/"
+    echo "  Copied agents from OpenAgents"
+fi
+
+if [[ -d "\$OPENAGENTS_DIR/context" ]]; then
+    # Copy context directory (context files for agents)
+    cp -r "\$OPENAGENTS_DIR/context" "\$HOME/.config/opencode/"
+    echo "  Copied context from OpenAgents"
+fi
+
+if [[ -d "\$OPENAGENTS_DIR/command" ]]; then
+    # Copy command directory (slash commands)
+    cp -r "\$OPENAGENTS_DIR/command" "\$HOME/.config/opencode/"
+    echo "  Copied commands from OpenAgents"
+fi
+
+# Count installed agents
+AGENT_COUNT=0
+SUBAGENT_COUNT=0
+if [[ -d "\$HOME/.config/opencode/agent" ]]; then
+    AGENT_COUNT=\$(find "\$HOME/.config/opencode/agent" -maxdepth 2 -name "*.md" ! -path "*/subagents/*" 2>/dev/null | wc -l)
+    SUBAGENT_COUNT=\$(find "\$HOME/.config/opencode/agent/subagents" -name "*.md" 2>/dev/null | wc -l)
+fi
+echo "  Installed \$AGENT_COUNT primary agents, \$SUBAGENT_COUNT subagents"
 
 # Run install
 echo ""
@@ -896,27 +841,48 @@ if ! ./install.sh; then
 fi
 
 echo ""
-echo "=== Setup Complete ==="
+echo "=== Setup Complete (\$TIER tier) ==="
 echo ""
 echo "Start a new shell session to pick up PATH changes:"
-echo "  exec \$SHELL"
+echo "  exec \\\$SHELL"
 echo ""
 echo "Then run OpenCode:"
 echo "  opencode"
 echo ""
-echo "Available models (use /models in OpenCode to switch):"
+
+# Tier-specific message
+case "\$TIER" in
+    free)
+        echo "FREE TIER: Using only 0x multiplier models (unlimited use)"
+        echo "  Primary agents: gpt-4.1, gpt-4o"
+        echo "  Subagents: gpt-5-mini, gpt-4o"
+        echo ""
+        echo "To upgrade: curl -fsSL http://localhost:\$RELAY_PORT/setup?tier=frugal | bash"
+        ;;
+    frugal)
+        echo "FRUGAL TIER: Balanced cost/quality"
+        echo "  Primary agents: claude-sonnet-4.5 (1x)"
+        echo "  Subagents: claude-haiku-4.5 (0.33x)"
+        echo "  Critical tasks: claude-sonnet-4.5 (security, planning)"
+        echo ""
+        echo "To upgrade: curl -fsSL http://localhost:\$RELAY_PORT/setup?tier=premium | bash"
+        ;;
+    premium)
+        echo "PREMIUM TIER: Maximum quality"
+        echo "  Primary agents: claude-opus-4.5 (3x), claude-sonnet-4.5 (1x)"
+        echo "  Subagents: claude-sonnet-4.5 (1x), claude-haiku-4.5 (0.33x)"
+        echo "  Best models for critical decisions"
+        ;;
+esac
+
 echo ""
-echo "  FREE (unlimited):"
-echo "    gpt-5-mini, gpt-4.1, gpt-4o"
+echo "Available agents:"
+echo "  Primary: openagent, opencoder, codebase-agent, backend-specialist,"
+echo "           frontend-specialist, devops-specialist, system-builder"
+echo "  Subagents: tester, reviewer, coder-agent, build-agent, task-manager,"
+echo "             documentation, context-retriever, and more"
 echo ""
-echo "  VERY CHEAP (0.25-0.33x):"
-echo "    claude-haiku-4.5, grok-code-fast-1, gemini-3-flash-preview"
-echo ""
-echo "  STANDARD (1x):"
-echo "    claude-sonnet-4.5, gpt-5, gpt-5.1, gemini-3-pro-preview, o3"
-echo ""
-echo "  PREMIUM (3x):"
-echo "    claude-opus-4.5 (best quality)"
+echo "Use '@agent-name' to invoke a specific agent"
 echo ""
 `;
       return new Response(setupScript, {
