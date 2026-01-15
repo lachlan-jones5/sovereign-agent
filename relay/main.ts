@@ -866,9 +866,7 @@ cat > "\$HOME/.config/opencode/opencode.jsonc" <<OPENCODEEOF
   },
   
   // Default to a free model
-  "model": {
-    "default": "sovereign-relay/gpt-5-mini"
-  }
+  "model": "sovereign-relay/gpt-5-mini"
 }
 OPENCODEEOF
 
