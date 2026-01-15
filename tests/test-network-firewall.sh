@@ -51,11 +51,11 @@ else
     fail "Script does not show usage"
 fi
 
-# Test 3: Allowed hosts include openrouter.ai
-if grep -q 'openrouter.ai' "$LIB_DIR/network-firewall.sh"; then
-    pass "Allowed hosts include openrouter.ai"
+# Test 3: Allowed hosts include api.githubcopilot.com
+if grep -q 'api.githubcopilot.com' "$LIB_DIR/network-firewall.sh"; then
+    pass "Allowed hosts include api.githubcopilot.com"
 else
-    fail "openrouter.ai not in allowed hosts"
+    fail "api.githubcopilot.com not in allowed hosts"
 fi
 
 # Test 4: Allowed hosts include npm registry

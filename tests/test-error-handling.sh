@@ -114,10 +114,10 @@ fi
 # --- lib/budget-firewall.sh error handling ---
 echo "--- lib/budget-firewall.sh ---"
 
-# Test 10: budget-firewall handles missing API key
+# Test 10: budget-firewall handles missing GitHub token
 run_test
-OPENROUTER_API_KEY="" output=$("$PROJECT_ROOT/lib/budget-firewall.sh" status 2>&1 || true)
-pass "budget-firewall.sh handles missing API key"
+GITHUB_TOKEN="" output=$("$PROJECT_ROOT/lib/budget-firewall.sh" status 2>&1 || true)
+pass "budget-firewall.sh handles missing GitHub token"
 
 # Test 11: budget-firewall handles invalid command
 run_test
@@ -232,10 +232,10 @@ fi
 # Test 23: Scripts don't leak sensitive data on error
 run_test
 output=$("$PROJECT_ROOT/lib/budget-firewall.sh" status 2>&1 || true)
-if ! echo "$output" | grep -qE "sk-or-v1-[a-zA-Z0-9]{20,}"; then
-    pass "Error output doesn't leak API keys"
+if ! echo "$output" | grep -qE "ghp_[a-zA-Z0-9]{36}|gho_[a-zA-Z0-9]{36}"; then
+    pass "Error output doesn't leak GitHub tokens"
 else
-    fail "API key leak" "no keys in output" "key found in output"
+    fail "GitHub token leak" "no tokens in output" "token found in output"
 fi
 
 # Test 24: Scripts handle SIGINT gracefully
@@ -254,7 +254,7 @@ fi
 
 # Test 25: Config validation errors are descriptive
 run_test
-echo '{"openrouter_api_key": ""}' > "$TEST_DIR/test_config.json"
+echo '{"relay": {"github_token": ""}}' > "$TEST_DIR/test_config.json"
 output=$("$PROJECT_ROOT/lib/validate.sh" "$TEST_DIR/test_config.json" 2>&1 || true)
 pass "Config validation provides output"
 

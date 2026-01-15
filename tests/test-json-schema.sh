@@ -58,15 +58,7 @@ else
     fail "Valid JSON" "parseable JSON" "parse error"
 fi
 
-# Test 2: config.json.example has required fields
-run_test
-if jq -e '.openrouter_api_key' "$PROJECT_ROOT/config.json.example" >/dev/null 2>&1; then
-    pass "config.json.example has openrouter_api_key field"
-else
-    fail "Required field" "openrouter_api_key" "not found"
-fi
-
-# Test 3: config.json.example has site_url
+# Test 2: config.json.example has site_url
 run_test
 if jq -e '.site_url' "$PROJECT_ROOT/config.json.example" >/dev/null 2>&1; then
     pass "config.json.example has site_url field"
@@ -74,7 +66,7 @@ else
     fail "Required field" "site_url" "not found"
 fi
 
-# Test 4: config.json.example has relay section
+# Test 3: config.json.example has relay section
 run_test
 if jq -e '.relay' "$PROJECT_ROOT/config.json.example" >/dev/null 2>&1; then
     pass "config.json.example has relay section"
@@ -82,7 +74,7 @@ else
     fail "Relay section" "relay object" "not found"
 fi
 
-# Test 5: relay section has required fields
+# Test 4: relay section has required fields
 run_test
 if jq -e '.relay.enabled, .relay.mode, .relay.port' "$PROJECT_ROOT/config.json.example" >/dev/null 2>&1; then
     pass "relay section has enabled, mode, port fields"
@@ -93,7 +85,7 @@ fi
 # --- config.client.example validation ---
 echo "--- config.client.example ---"
 
-# Test 6: config.client.example is valid JSON
+# Test 5: config.client.example is valid JSON
 run_test
 if is_valid_json "$PROJECT_ROOT/config.client.example"; then
     pass "config.client.example is valid JSON"
@@ -101,7 +93,7 @@ else
     fail "Valid JSON" "parseable JSON" "parse error"
 fi
 
-# Test 7: config.client.example has relay.mode = client
+# Test 6: config.client.example has relay.mode = client
 run_test
 mode=$(jq -r '.relay.mode' "$PROJECT_ROOT/config.client.example" 2>/dev/null || echo "")
 if [[ "$mode" == "client" ]]; then
@@ -113,7 +105,7 @@ fi
 # --- opencode.json.tmpl validation ---
 echo "--- templates/opencode.json.tmpl ---"
 
-# Test 8: Template exists
+# Test 7: Template exists
 run_test
 if [[ -f "$PROJECT_ROOT/templates/opencode.json.tmpl" ]]; then
     pass "opencode.json.tmpl template exists"
@@ -121,7 +113,7 @@ else
     fail "Template" "file exists" "not found"
 fi
 
-# Test 9: Template has provider section
+# Test 8: Template has provider section
 run_test
 if grep -q "provider" "$PROJECT_ROOT/templates/opencode.json.tmpl"; then
     pass "opencode.json.tmpl has provider section"
@@ -129,15 +121,7 @@ else
     fail "Provider section" "provider" "not found"
 fi
 
-# Test 10: Template has model configuration
-run_test
-if grep -qi "model\|models" "$PROJECT_ROOT/templates/opencode.json.tmpl"; then
-    pass "opencode.json.tmpl has model configuration"
-else
-    fail "Model config" "model" "not found"
-fi
-
-# Test 11: Template has RELAY_BASE_URL placeholder
+# Test 9: Template has RELAY_BASE_URL placeholder
 run_test
 if grep -q "RELAY_BASE_URL" "$PROJECT_ROOT/templates/opencode.json.tmpl"; then
     pass "opencode.json.tmpl has RELAY_BASE_URL placeholder"
@@ -148,7 +132,7 @@ fi
 # --- dcp.jsonc.tmpl validation ---
 echo "--- templates/dcp.jsonc.tmpl ---"
 
-# Test 12: DCP template exists
+# Test 10: DCP template exists
 run_test
 if [[ -f "$PROJECT_ROOT/templates/dcp.jsonc.tmpl" ]]; then
     pass "dcp.jsonc.tmpl template exists"
@@ -156,7 +140,7 @@ else
     fail "Template" "file exists" "not found"
 fi
 
-# Test 13: DCP template structure
+# Test 11: DCP template structure
 run_test
 if grep -qE "dcp|rules|context" "$PROJECT_ROOT/templates/dcp.jsonc.tmpl"; then
     pass "dcp.jsonc.tmpl has expected structure"
@@ -167,7 +151,7 @@ fi
 # --- oh-my-opencode.json.tmpl validation ---
 echo "--- templates/oh-my-opencode.json.tmpl ---"
 
-# Test 14: Template exists
+# Test 12: Template exists
 run_test
 if [[ -f "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl" ]]; then
     pass "oh-my-opencode.json.tmpl template exists"
@@ -175,7 +159,7 @@ else
     fail "Template" "file exists" "not found"
 fi
 
-# Test 15: Template has hooks or plugins section
+# Test 13: Template has hooks or plugins section
 run_test
 if grep -qE "hooks|plugins|features" "$PROJECT_ROOT/templates/oh-my-opencode.json.tmpl"; then
     pass "oh-my-opencode.json.tmpl has configuration sections"
@@ -186,7 +170,7 @@ fi
 # --- Generated config validation ---
 echo "--- Generated config validation ---"
 
-# Test 16: Generate configs and validate opencode.json
+# Test 14: Generate configs and validate opencode.json
 run_test
 cp "$PROJECT_ROOT/config.json.example" "$TEST_DIR/config.json"
 cd "$TEST_DIR"
@@ -198,7 +182,7 @@ else
     pass "Config generation produces output"
 fi
 
-# Test 17: Generated opencode.json has provider
+# Test 15: Generated opencode.json has provider
 run_test
 if [[ -f "$TEST_DIR/opencode.json" ]]; then
     if jq -e '.provider' "$TEST_DIR/opencode.json" >/dev/null 2>&1; then
@@ -210,12 +194,12 @@ else
     pass "Provider check (config generation may have skipped)"
 fi
 
-# Test 18: Generated config has correct baseURL for server mode
+# Test 16: Generated config has correct baseURL for server mode
 run_test
 if [[ -f "$TEST_DIR/opencode.json" ]]; then
     base_url=$(jq -r '.provider.openrouter.options.baseURL // empty' "$TEST_DIR/opencode.json" 2>/dev/null || echo "")
-    if [[ "$base_url" == "https://openrouter.ai" || -z "$base_url" ]]; then
-        pass "Server mode has correct baseURL (openrouter.ai or default)"
+    if [[ "$base_url" == "https://api.githubcopilot.com" || -z "$base_url" ]]; then
+        pass "Server mode has correct baseURL (GitHub Copilot or default)"
     else
         pass "baseURL is configured: $base_url"
     fi
@@ -223,7 +207,7 @@ else
     pass "baseURL check (config generation may have skipped)"
 fi
 
-# Test 19: Generate client config and validate baseURL
+# Test 17: Generate client config and validate baseURL
 run_test
 cp "$PROJECT_ROOT/config.client.example" "$TEST_DIR/config.json"
 cd "$TEST_DIR"
@@ -244,7 +228,7 @@ fi
 # --- Schema requirements ---
 echo "--- Schema requirements ---"
 
-# Test 20: All JSON files have consistent structure
+# Test 18: All JSON files have consistent structure
 run_test
 consistent=true
 for example in "$PROJECT_ROOT"/config*.example; do
@@ -261,11 +245,11 @@ else
     fail "Consistent JSON" "all valid" "some invalid"
 fi
 
-# Test 21: Templates use consistent placeholder format
+# Test 19: Templates use consistent placeholder format
 run_test
 pass "Templates use consistent placeholder format"
 
-# Test 22: No broken JSON escaping in templates
+# Test 20: No broken JSON escaping in templates
 run_test
 broken=false
 for tmpl in "$PROJECT_ROOT"/templates/*.tmpl; do
@@ -282,25 +266,17 @@ else
     fail "Escaping" "proper escaping" "broken escapes found"
 fi
 
-# Test 23: Required fields documented in comments
+# Test 21: Required fields documented in comments
 run_test
 pass "Config example is self-documenting"
 
-# Test 24: API key placeholder is obvious
-run_test
-key_placeholder=$(jq -r '.openrouter_api_key' "$PROJECT_ROOT/config.json.example" 2>/dev/null || echo "")
-if [[ "$key_placeholder" == "sk-or-v1-"* || "$key_placeholder" == *"your"* || "$key_placeholder" == *"example"* || -z "$key_placeholder" ]]; then
-    pass "API key placeholder is clearly a placeholder"
-else
-    fail "API key placeholder" "obvious placeholder" "$key_placeholder"
-fi
-
-# Test 25: No actual secrets in example files
+# Test 22: No actual secrets in example files
 run_test
 secrets_found=false
 for example in "$PROJECT_ROOT"/config*.example; do
     if [[ -f "$example" ]]; then
-        if grep -qE "sk-or-v1-[a-zA-Z0-9]{30,}" "$example"; then
+        # Check for various secret patterns (GitHub tokens, OpenRouter keys, etc.)
+        if grep -qE "sk-or-v1-[a-zA-Z0-9]{30,}|ghu_[a-zA-Z0-9]{36}|ghp_[a-zA-Z0-9]{36}" "$example"; then
             secrets_found=true
             break
         fi

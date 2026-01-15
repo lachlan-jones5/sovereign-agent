@@ -86,12 +86,12 @@ else
     fail "Gemini model" "gemini reference" "not found"
 fi
 
-# Test 7: Script uses OpenRouter API endpoint
+# Test 7: Script uses GitHub Copilot API endpoint
 run_test
-if grep -q "openrouter.ai/api/v1/auth/key" "$BUDGET_SCRIPT"; then
-    pass "Uses OpenRouter auth/key endpoint for usage stats"
+if grep -q "api.githubcopilot.com" "$BUDGET_SCRIPT"; then
+    pass "Uses GitHub Copilot API endpoint for usage stats"
 else
-    fail "OpenRouter endpoint" "openrouter.ai/api/v1/auth/key" "not found"
+    fail "GitHub Copilot endpoint" "api.githubcopilot.com" "not found"
 fi
 
 # Test 8: Script warns about Opus costs
@@ -137,7 +137,7 @@ fi
 
 # Test 13: Script handles missing API key gracefully
 run_test
-OPENROUTER_API_KEY="" output=$("$BUDGET_SCRIPT" status 2>&1 || true)
+GITHUB_OAUTH_TOKEN="" output=$("$BUDGET_SCRIPT" status 2>&1 || true)
 # Should not crash
 pass "Script handles missing API key gracefully"
 

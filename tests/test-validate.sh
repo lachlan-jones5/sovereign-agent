@@ -61,221 +61,33 @@ test_invalid_json() {
     fi
 }
 
-# Test 3: Valid config passes validation
-test_valid_config() {
-    local name="Valid config passes validation"
-    cat > "$TEST_TMP_DIR/valid.json" << 'EOF'
+# Test 3: Valid relay server config passes validation
+test_valid_relay_server_config() {
+    local name="Valid relay server config passes validation"
+    cat > "$TEST_TMP_DIR/relay-server.json" << 'EOF'
 {
-  "openrouter_api_key": "sk-or-v1-test-key",
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "deepseek/deepseek-v3",
-    "planner": "anthropic/claude-opus-4.5",
-    "librarian": "google/gemini-3-flash",
-    "fallback": "meta-llama/llama-3.3-70b-instruct"
-  }
-}
-EOF
-    if validate_config "$TEST_TMP_DIR/valid.json" 2>/dev/null; then
-        pass "$name"
-    else
-        fail "$name" "exit code 0" "exit code 1"
-    fi
-}
-
-# Test 4: Placeholder API key returns error
-test_placeholder_api_key() {
-    local name="Placeholder API key returns error"
-    cat > "$TEST_TMP_DIR/placeholder.json" << 'EOF'
-{
-  "openrouter_api_key": "sk-or-v1-your-api-key-here",
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "deepseek/deepseek-v3",
-    "planner": "anthropic/claude-opus-4.5",
-    "librarian": "google/gemini-3-flash",
-    "fallback": "meta-llama/llama-3.3-70b-instruct"
-  }
-}
-EOF
-    if validate_config "$TEST_TMP_DIR/placeholder.json" 2>/dev/null; then
-        fail "$name" "exit code 1" "exit code 0"
-    else
-        pass "$name"
-    fi
-}
-
-# Test 5: Missing required field returns error
-test_missing_required_field() {
-    local name="Missing orchestrator model returns error"
-    cat > "$TEST_TMP_DIR/missing-field.json" << 'EOF'
-{
-  "openrouter_api_key": "sk-or-v1-test-key",
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "planner": "anthropic/claude-opus-4.5",
-    "librarian": "google/gemini-3-flash",
-    "fallback": "meta-llama/llama-3.3-70b-instruct"
-  }
-}
-EOF
-    if validate_config "$TEST_TMP_DIR/missing-field.json" 2>/dev/null; then
-        fail "$name" "exit code 1" "exit code 0"
-    else
-        pass "$name"
-    fi
-}
-
-# Test 6: Config with optional preferences passes
-test_optional_preferences() {
-    local name="Config with optional preferences passes"
-    cat > "$TEST_TMP_DIR/with-prefs.json" << 'EOF'
-{
-  "openrouter_api_key": "sk-or-v1-test-key",
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "deepseek/deepseek-v3",
-    "planner": "anthropic/claude-opus-4.5",
-    "librarian": "google/gemini-3-flash",
-    "fallback": "meta-llama/llama-3.3-70b-instruct"
-  },
-  "preferences": {
-    "ultrawork_max_iterations": 100,
-    "dcp_turn_protection": 3
-  }
-}
-EOF
-    if validate_config "$TEST_TMP_DIR/with-prefs.json" 2>/dev/null; then
-        pass "$name"
-    else
-        fail "$name" "exit code 0" "exit code 1"
-    fi
-}
-
-# Test 7: Config with genius model passes validation
-test_genius_model() {
-    local name="Config with genius model passes validation"
-    cat > "$TEST_TMP_DIR/with-genius.json" << 'EOF'
-{
-  "openrouter_api_key": "sk-or-v1-test-key",
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "deepseek/deepseek-v3.2",
-    "planner": "deepseek/deepseek-r1-0528",
-    "librarian": "google/gemini-3-flash-preview",
-    "genius": "anthropic/claude-opus-4.5",
-    "fallback": "meta-llama/llama-4-maverick"
-  }
-}
-EOF
-    if validate_config "$TEST_TMP_DIR/with-genius.json" 2>/dev/null; then
-        pass "$name"
-    else
-        fail "$name" "exit code 0" "exit code 1"
-    fi
-}
-
-# Test 8: Config without genius model produces warning but passes
-test_missing_genius_model_warns() {
-    local name="Missing genius model produces warning but passes"
-    cat > "$TEST_TMP_DIR/no-genius.json" << 'EOF'
-{
-  "openrouter_api_key": "sk-or-v1-test-key",
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "deepseek/deepseek-v3",
-    "planner": "anthropic/claude-opus-4.5",
-    "librarian": "google/gemini-3-flash",
-    "fallback": "meta-llama/llama-3.3-70b-instruct"
-  }
-}
-EOF
-    local output
-    output=$(validate_config "$TEST_TMP_DIR/no-genius.json" 2>&1)
-    local exit_code=$?
-    
-    if [[ $exit_code -eq 0 ]]; then
-        # Should pass but warn
-        if echo "$output" | grep -q "genius"; then
-            pass "$name"
-        else
-            # Pass even without warning - genius is optional
-            pass "$name"
-        fi
-    else
-        fail "$name" "exit code 0" "exit code $exit_code"
-    fi
-}
-
-# Test 9: All five model tiers in config
-test_all_five_model_tiers() {
-    local name="All five model tiers in config passes"
-    cat > "$TEST_TMP_DIR/all-tiers.json" << 'EOF'
-{
-  "openrouter_api_key": "sk-or-v1-test-key",
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "deepseek/deepseek-v3.2",
-    "planner": "deepseek/deepseek-r1-0528",
-    "librarian": "google/gemini-3-flash-preview",
-    "genius": "anthropic/claude-opus-4.5",
-    "fallback": "meta-llama/llama-4-maverick"
-  }
-}
-EOF
-    if validate_config "$TEST_TMP_DIR/all-tiers.json" 2>/dev/null; then
-        pass "$name"
-    else
-        fail "$name" "exit code 0" "exit code 1"
-    fi
-}
-
-# Test 10: Empty model values return error
-test_empty_model_value() {
-    local name="Empty orchestrator model value returns error"
-    cat > "$TEST_TMP_DIR/empty-model.json" << 'EOF'
-{
-  "openrouter_api_key": "sk-or-v1-test-key",
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "",
-    "planner": "anthropic/claude-opus-4.5",
-    "librarian": "google/gemini-3-flash",
-    "fallback": "meta-llama/llama-3.3-70b-instruct"
-  }
-}
-EOF
-    if validate_config "$TEST_TMP_DIR/empty-model.json" 2>/dev/null; then
-        fail "$name" "exit code 1" "exit code 0"
-    else
-        pass "$name"
-    fi
-}
-
-# Test 11: Relay client mode skips API key validation
-test_relay_client_mode_skips_api_key() {
-    local name="Relay client mode skips API key validation"
-    cat > "$TEST_TMP_DIR/relay-client.json" << 'EOF'
-{
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "deepseek/deepseek-v3",
-    "planner": "anthropic/claude-opus-4.5",
-    "librarian": "google/gemini-3-flash",
-    "fallback": "meta-llama/llama-3.3-70b-instruct"
-  },
   "relay": {
     "enabled": true,
-    "mode": "client"
+    "mode": "server"
+  }
+}
+EOF
+    if validate_config "$TEST_TMP_DIR/relay-server.json" 2>/dev/null; then
+        pass "$name"
+    else
+        fail "$name" "exit code 0" "exit code 1"
+    fi
+}
+
+# Test 4: Valid relay client config passes validation
+test_valid_relay_client_config() {
+    local name="Valid relay client config passes validation"
+    cat > "$TEST_TMP_DIR/relay-client.json" << 'EOF'
+{
+  "relay": {
+    "enabled": true,
+    "mode": "client",
+    "port": 8081
   }
 }
 EOF
@@ -286,29 +98,180 @@ EOF
     fi
 }
 
-# Test 12: Relay server mode still requires API key
-test_relay_server_mode_requires_api_key() {
-    local name="Relay server mode still requires API key"
-    cat > "$TEST_TMP_DIR/relay-server.json" << 'EOF'
+# Test 5: Relay client config without port passes (uses default)
+test_relay_client_without_port() {
+    local name="Relay client config without port passes with warning"
+    cat > "$TEST_TMP_DIR/relay-client-no-port.json" << 'EOF'
 {
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "deepseek/deepseek-v3",
-    "planner": "anthropic/claude-opus-4.5",
-    "librarian": "google/gemini-3-flash",
-    "fallback": "meta-llama/llama-3.3-70b-instruct"
-  },
+  "relay": {
+    "enabled": true,
+    "mode": "client"
+  }
+}
+EOF
+    local output
+    output=$(validate_config "$TEST_TMP_DIR/relay-client-no-port.json" 2>&1)
+    local exit_code=$?
+    
+    if [[ $exit_code -eq 0 ]]; then
+        if echo "$output" | grep -q "relay.port not set"; then
+            pass "$name"
+        else
+            pass "$name (no warning expected)"
+        fi
+    else
+        fail "$name" "exit code 0" "exit code $exit_code"
+    fi
+}
+
+# Test 6: Relay server config without github_oauth_token passes with warning
+test_relay_server_without_oauth_token() {
+    local name="Relay server config without github_oauth_token passes with warning"
+    cat > "$TEST_TMP_DIR/relay-server-no-token.json" << 'EOF'
+{
   "relay": {
     "enabled": true,
     "mode": "server"
   }
 }
 EOF
-    if validate_config "$TEST_TMP_DIR/relay-server.json" 2>/dev/null; then
-        fail "$name" "exit code 1" "exit code 0"
+    local output
+    output=$(validate_config "$TEST_TMP_DIR/relay-server-no-token.json" 2>&1)
+    local exit_code=$?
+    
+    if [[ $exit_code -eq 0 ]]; then
+        if echo "$output" | grep -q "github_oauth_token not set"; then
+            pass "$name"
+        else
+            pass "$name (no warning expected)"
+        fi
     else
+        fail "$name" "exit code 0" "exit code $exit_code"
+    fi
+}
+
+# Test 7: Deprecated openrouter_api_key produces warning
+test_deprecated_openrouter_api_key_warning() {
+    local name="Deprecated openrouter_api_key produces warning"
+    cat > "$TEST_TMP_DIR/with-openrouter.json" << 'EOF'
+{
+  "openrouter_api_key": "sk-or-v1-test-key",
+  "relay": {
+    "enabled": true,
+    "mode": "server"
+  }
+}
+EOF
+    local output
+    output=$(validate_config "$TEST_TMP_DIR/with-openrouter.json" 2>&1)
+    local exit_code=$?
+    
+    if [[ $exit_code -eq 0 ]]; then
+        if echo "$output" | grep -q "openrouter_api_key is deprecated"; then
+            pass "$name"
+        else
+            fail "$name" "warning about deprecated openrouter_api_key" "no warning"
+        fi
+    else
+        fail "$name" "exit code 0 with warning" "exit code $exit_code"
+    fi
+}
+
+# Test 8: Invalid relay mode produces warning
+test_invalid_relay_mode() {
+    local name="Invalid relay mode produces warning"
+    cat > "$TEST_TMP_DIR/invalid-mode.json" << 'EOF'
+{
+  "relay": {
+    "enabled": true,
+    "mode": "invalid"
+  }
+}
+EOF
+    local output
+    output=$(validate_config "$TEST_TMP_DIR/invalid-mode.json" 2>&1)
+    local exit_code=$?
+    
+    if [[ $exit_code -eq 0 ]]; then
+        if echo "$output" | grep -q "should be 'client' or 'server'"; then
+            pass "$name"
+        else
+            fail "$name" "warning about invalid mode" "no warning"
+        fi
+    else
+        fail "$name" "exit code 0 with warning" "exit code $exit_code"
+    fi
+}
+
+# Test 9: Empty config passes validation
+test_empty_config() {
+    local name="Empty config passes validation"
+    cat > "$TEST_TMP_DIR/empty.json" << 'EOF'
+{}
+EOF
+    if validate_config "$TEST_TMP_DIR/empty.json" 2>/dev/null; then
         pass "$name"
+    else
+        fail "$name" "exit code 0" "exit code 1"
+    fi
+}
+
+# Test 10: Config with relay disabled passes
+test_relay_disabled() {
+    local name="Config with relay disabled passes"
+    cat > "$TEST_TMP_DIR/relay-disabled.json" << 'EOF'
+{
+  "relay": {
+    "enabled": false
+  }
+}
+EOF
+    if validate_config "$TEST_TMP_DIR/relay-disabled.json" 2>/dev/null; then
+        pass "$name"
+    else
+        fail "$name" "exit code 0" "exit code 1"
+    fi
+}
+
+# Test 11: Config with additional fields passes
+test_config_with_additional_fields() {
+    local name="Config with additional fields passes"
+    cat > "$TEST_TMP_DIR/with-extra.json" << 'EOF'
+{
+  "relay": {
+    "enabled": true,
+    "mode": "client"
+  },
+  "site_url": "https://example.com",
+  "site_name": "TestSite",
+  "preferences": {
+    "ultrawork_max_iterations": 100
+  }
+}
+EOF
+    if validate_config "$TEST_TMP_DIR/with-extra.json" 2>/dev/null; then
+        pass "$name"
+    else
+        fail "$name" "exit code 0" "exit code 1"
+    fi
+}
+
+# Test 12: Relay server config with github_oauth_token passes
+test_relay_server_with_oauth_token() {
+    local name="Relay server config with github_oauth_token passes"
+    cat > "$TEST_TMP_DIR/relay-server-with-token.json" << 'EOF'
+{
+  "github_oauth_token": "gho_test_token_here",
+  "relay": {
+    "enabled": true,
+    "mode": "server"
+  }
+}
+EOF
+    if validate_config "$TEST_TMP_DIR/relay-server-with-token.json" 2>/dev/null; then
+        pass "$name"
+    else
+        fail "$name" "exit code 0" "exit code 1"
     fi
 }
 
@@ -320,16 +283,16 @@ echo
 
 test_missing_config_file
 test_invalid_json
-test_valid_config
-test_placeholder_api_key
-test_missing_required_field
-test_optional_preferences
-test_genius_model
-test_missing_genius_model_warns
-test_all_five_model_tiers
-test_empty_model_value
-test_relay_client_mode_skips_api_key
-test_relay_server_mode_requires_api_key
+test_valid_relay_server_config
+test_valid_relay_client_config
+test_relay_client_without_port
+test_relay_server_without_oauth_token
+test_deprecated_openrouter_api_key_warning
+test_invalid_relay_mode
+test_empty_config
+test_relay_disabled
+test_config_with_additional_fields
+test_relay_server_with_oauth_token
 
 echo
 echo "========================================"

@@ -51,10 +51,9 @@ fail() {
 create_test_config() {
     cat > "$TEST_TMP/config.json" << 'EOF'
 {
-  "openrouter_api_key": "test-key",
+  "github_oauth_token": "test-token",
   "site_url": "https://test.local",
   "site_name": "Test",
-  "tier": "frugal",
   "preferences": {
     "ultrawork_max_iterations": 50,
     "dcp_turn_protection": 2,

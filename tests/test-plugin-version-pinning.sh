@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # test-plugin-version-pinning.sh - Tests for plugin version pinning functionality
 #
-# Tests that DCP plugin versions are properly configured in tier templates and config
+# Tests that DCP plugin versions are properly configured in templates and config
 
 # Don't use set -e as we want to run all tests even if some fail
 
@@ -51,10 +51,9 @@ fail() {
 create_pinned_config() {
     cat > "$TEST_TMP/config-pinned.json" << 'EOF'
 {
-  "openrouter_api_key": "test-key",
+  "github_oauth_token": "test-token",
   "site_url": "https://test.local",
   "site_name": "Test",
-  "tier": "frugal",
   "plugins": {
     "opencode_dcp_version": "1.2.1",
     "pin_versions": true
@@ -67,10 +66,9 @@ EOF
 create_unpinned_config() {
     cat > "$TEST_TMP/config-unpinned.json" << 'EOF'
 {
-  "openrouter_api_key": "test-key",
+  "github_oauth_token": "test-token",
   "site_url": "https://test.local",
   "site_name": "Test",
-  "tier": "frugal",
   "plugins": {
     "opencode_dcp_version": "1.2.1",
     "pin_versions": false
@@ -86,77 +84,56 @@ echo
 
 setup
 
-# Test 1: Free tier template has version placeholder for DCP
-if grep -q '{{DCP_VERSION}}' "$TEMPLATES_DIR/opencode.free.jsonc.tmpl"; then
-    pass "Free tier template has {{DCP_VERSION}} placeholder"
-else
-    fail "Free tier template missing {{DCP_VERSION}} placeholder"
-fi
-
-# Test 2: Frugal tier template has version placeholder for DCP
-if grep -q '{{DCP_VERSION}}' "$TEMPLATES_DIR/opencode.frugal.jsonc.tmpl"; then
-    pass "Frugal tier template has {{DCP_VERSION}} placeholder"
-else
-    fail "Frugal tier template missing {{DCP_VERSION}} placeholder"
-fi
-
-# Test 3: Premium tier template has version placeholder for DCP
-if grep -q '{{DCP_VERSION}}' "$TEMPLATES_DIR/opencode.premium.jsonc.tmpl"; then
-    pass "Premium tier template has {{DCP_VERSION}} placeholder"
-else
-    fail "Premium tier template missing {{DCP_VERSION}} placeholder"
-fi
-
-# Test 4: config.json.example has plugins section
+# Test 1: config.json.example has plugins section
 if grep -q '"plugins"' "$PROJECT_DIR/config.json.example"; then
     pass "config.json.example has plugins section"
 else
     fail "config.json.example missing plugins section"
 fi
 
-# Test 5: config.json.example has pin_versions option
+# Test 2: config.json.example has pin_versions option
 if grep -q '"pin_versions"' "$PROJECT_DIR/config.json.example"; then
     pass "config.json.example has pin_versions option"
 else
     fail "config.json.example missing pin_versions option"
 fi
 
-# Test 6: config.json.example has DCP version
+# Test 3: config.json.example has DCP version
 if grep -q '"opencode_dcp_version"' "$PROJECT_DIR/config.json.example"; then
     pass "config.json.example has opencode_dcp_version"
 else
     fail "config.json.example missing opencode_dcp_version"
 fi
 
-# Test 7: config.json.example uses correct DCP version (1.2.1)
+# Test 4: config.json.example uses correct DCP version (1.2.1)
 if grep -q '"opencode_dcp_version": "1.2.1"' "$PROJECT_DIR/config.json.example"; then
     pass "config.json.example uses DCP version 1.2.1"
 else
     fail "config.json.example does not use DCP version 1.2.1"
 fi
 
-# Test 8: generate-configs.sh handles DCP version
+# Test 5: generate-configs.sh handles DCP version
 if grep -q 'dcp_version' "$LIB_DIR/generate-configs.sh"; then
     pass "generate-configs.sh handles dcp_version"
 else
     fail "generate-configs.sh missing dcp_version handling"
 fi
 
-# Test 9: generate-configs.sh respects pin_versions flag
+# Test 6: generate-configs.sh respects pin_versions flag
 if grep -q 'pin_versions' "$LIB_DIR/generate-configs.sh"; then
     pass "generate-configs.sh respects pin_versions flag"
 else
     fail "generate-configs.sh missing pin_versions flag handling"
 fi
 
-# Test 10: generate-configs.sh default DCP version is 1.2.1
+# Test 7: generate-configs.sh default DCP version is 1.2.1
 if grep -q "'1.2.1'" "$LIB_DIR/generate-configs.sh"; then
     pass "generate-configs.sh default DCP version is 1.2.1"
 else
     fail "generate-configs.sh default DCP version is not 1.2.1"
 fi
 
-# Test 11: Test config generation with pinned versions
+# Test 8: Test config generation with pinned versions
 create_pinned_config
 source "$LIB_DIR/generate-configs.sh"
 generate_all_configs "$TEST_TMP/config-pinned.json" "$TEST_TMP/config" > /dev/null 2>&1
@@ -167,7 +144,7 @@ else
     fail "Pinned config does not generate versioned DCP plugin"
 fi
 
-# Test 12: Test config generation with unpinned versions
+# Test 9: Test config generation with unpinned versions
 create_unpinned_config
 # Need to re-source to clear old values, run in subshell
 (
@@ -181,25 +158,11 @@ else
     fail "Unpinned config does not generate @latest plugins"
 fi
 
-# Test 13: Default pin_versions should be true (secure by default)
+# Test 10: Default pin_versions should be true (secure by default)
 if grep -q "pin_versions' 'true'" "$LIB_DIR/generate-configs.sh"; then
     pass "Default pin_versions is true (secure by default)"
 else
     fail "Default pin_versions is not true"
-fi
-
-# Test 14: Templates do not hardcode @latest directly
-HARDCODED_LATEST=false
-for tier in free frugal premium; do
-    if grep -q '@latest' "$TEMPLATES_DIR/opencode.${tier}.jsonc.tmpl"; then
-        HARDCODED_LATEST=true
-        break
-    fi
-done
-if [[ "$HARDCODED_LATEST" == "false" ]]; then
-    pass "Templates do not hardcode @latest"
-else
-    fail "Templates still hardcode @latest"
 fi
 
 teardown

@@ -246,7 +246,7 @@ test_checks_env_variable() {
     local content
     content=$(cat "$BUDGET_SCRIPT")
     
-    if echo "$content" | grep -qi 'OPENROUTER_API_KEY'; then
+    if echo "$content" | grep -qi 'GITHUB_OAUTH_TOKEN\|github_oauth_token'; then
         pass "$name"
     else
         fail "$name" "environment variable check" "not found"
@@ -258,7 +258,7 @@ test_checks_config_file() {
     local content
     content=$(cat "$BUDGET_SCRIPT")
     
-    if echo "$content" | grep -qi 'config\.json\|jq.*api_key'; then
+    if echo "$content" | grep -qi 'config\.json\|jq.*api_key\|github_oauth_token'; then
         pass "$name"
     else
         fail "$name" "config.json check" "not found"
@@ -270,24 +270,24 @@ test_checks_env_variable
 test_checks_config_file
 
 # ============================================================================
-# OPENROUTER API TESTS
+# GITHUB COPILOT API TESTS
 # ============================================================================
 
 echo
 echo "========================================"
-echo "OpenRouter API Tests"
+echo "GitHub Copilot API Tests"
 echo "========================================"
 echo
 
-test_uses_openrouter_api() {
-    local name="Uses OpenRouter API endpoint"
+test_uses_github_api() {
+    local name="Uses GitHub Copilot API endpoint"
     local content
     content=$(cat "$BUDGET_SCRIPT")
     
-    if echo "$content" | grep -qi 'openrouter\.ai\|api/v1'; then
+    if echo "$content" | grep -qi 'api.githubcopilot.com\|github.*copilot'; then
         pass "$name"
     else
-        fail "$name" "OpenRouter API" "not found"
+        fail "$name" "GitHub Copilot API" "not found"
     fi
 }
 
@@ -315,7 +315,7 @@ test_uses_curl() {
     fi
 }
 
-test_uses_openrouter_api
+test_uses_github_api
 test_get_usage_stats_function
 test_uses_curl
 
@@ -496,7 +496,7 @@ test_estimate_without_key() {
     
     # Run with empty/invalid key
     local output
-    output=$(OPENROUTER_API_KEY="" "$BUDGET_SCRIPT" estimate 2>&1)
+    output=$(GITHUB_OAUTH_TOKEN="" "$BUDGET_SCRIPT" estimate 2>&1)
     
     # Should not crash, should show error or fallback
     pass "$name"

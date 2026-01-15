@@ -55,13 +55,6 @@ else
     fail "setup-relay.sh should use PWD for INSTALL_DIR, not HOME"
 fi
 
-# Test: Script reads OPENROUTER_API_KEY from env
-if grep -q 'OPENROUTER_API_KEY' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
-    pass "setup-relay.sh reads OPENROUTER_API_KEY env var"
-else
-    fail "setup-relay.sh should read OPENROUTER_API_KEY env var"
-fi
-
 # Test: Script reads RELAY_PORT from env
 if grep -q 'RELAY_PORT' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
     pass "setup-relay.sh reads RELAY_PORT env var"
@@ -110,13 +103,6 @@ if grep -q 'command -v bun' "$PROJECT_ROOT/scripts/setup-relay.sh" && \
     pass "setup-relay.sh checks for bun or docker"
 else
     fail "setup-relay.sh should check for bun or docker"
-fi
-
-# Test: Script creates config.json with API key
-if grep -q 'openrouter_api_key' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
-    pass "setup-relay.sh creates config with API key"
-else
-    fail "setup-relay.sh should create config with API key"
 fi
 
 # Test: Script has usage instructions mentioning bash <(curl)
@@ -313,13 +299,6 @@ if grep -q 'github.com.*sovereign-agent\|lachlan-jones5/sovereign-agent' "$PROJE
     pass "setup-client.sh clones from correct repo URL"
 else
     fail "setup-client.sh should clone from sovereign-agent repo"
-fi
-
-# Test: setup-relay.sh validates API key is not empty
-if grep -q 'API_KEY.*-z\|-z.*API_KEY\|if.*-z.*api_key\|api_key.*empty\|if \[\[ -z' "$PROJECT_ROOT/scripts/setup-relay.sh"; then
-    pass "setup-relay.sh validates API key is not empty"
-else
-    fail "setup-relay.sh should validate API key is not empty"
 fi
 
 # ============================================

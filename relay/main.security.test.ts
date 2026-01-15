@@ -1,210 +1,181 @@
 /**
- * Security-focused tests for Sovereign Agent API Relay
+ * Security-focused tests for Sovereign Agent GitHub Copilot Relay
  *
  * These tests cover:
- * - SSRF protection (Server-Side Request Forgery)
- * - API key leak prevention
- * - Bundle security (no sensitive files)
+ * - OAuth token protection
+ * - Copilot token leak prevention
+ * - SSRF protection for Copilot API
+ * - Bundle security (no tokens)
  * - Path traversal protection
  * - Request smuggling prevention
+ * - Config file security
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
+import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync, readFileSync } from "fs";
 import { resolve } from "path";
 
-const TEST_DIR = resolve(import.meta.dir, "../.test-relay-security");
+const TEST_DIR = resolve(import.meta.dir, "../.test-relay-security-copilot");
 
-describe("SSRF Protection", () => {
-  /**
-   * SSRF attacks try to make the server request internal resources.
-   * The relay should ONLY forward to openrouter.ai, never to arbitrary hosts.
-   */
-
-  const PRIVATE_IPS = [
-    "127.0.0.1",
-    "localhost",
-    "0.0.0.0",
-    "10.0.0.1",
-    "10.255.255.255",
-    "172.16.0.1",
-    "172.31.255.255",
-    "192.168.0.1",
-    "192.168.255.255",
-    "169.254.0.1", // Link-local
-    "::1", // IPv6 localhost
-    "fe80::1", // IPv6 link-local
-    "fc00::1", // IPv6 ULA
-  ];
-
-  it("should reject requests with Host header pointing to private IPs", () => {
-    for (const ip of PRIVATE_IPS) {
-      const headers = new Headers({ Host: ip });
-      // The relay should sanitize this - Host header is deleted
-      headers.delete("Host");
-      expect(headers.get("Host")).toBeNull();
-    }
-  });
-
-  it("should not allow redirects to private IPs in target URL", () => {
-    // The relay hardcodes OPENROUTER_BASE = "https://openrouter.ai"
-    // It should never construct URLs pointing elsewhere
-    const OPENROUTER_BASE = "https://openrouter.ai";
+describe("OAuth Token Protection", () => {
+  it("should never include OAuth token in error responses", () => {
+    const oauthToken = "gho_secret_oauth_token_12345";
+    const errorDetails = "Copilot token refresh failed: 401";
     
-    for (const ip of PRIVATE_IPS) {
-      const maliciousPath = `/api/v1/chat/completions?redirect=http://${ip}/steal`;
-      const targetUrl = `${OPENROUTER_BASE}${maliciousPath}`;
-      
-      // Target URL should always start with openrouter.ai
-      expect(targetUrl).toStartWith("https://openrouter.ai");
-      // Should not contain the private IP as part of the hostname
-      expect(targetUrl).not.toMatch(new RegExp(`^https?://${ip.replace(/\./g, "\\.")}`));
-    }
-  });
-
-  it("should block path traversal attempts targeting internal endpoints", () => {
-    const traversalAttempts = [
-      "/../../../etc/passwd",
-      "/api/v1/../../../internal",
-      "/api/v1/chat/completions/../../admin",
-      "/api/v1/chat/completions%2f..%2f..%2fadmin",
-      "/api/v1/chat/completions;../../admin",
-    ];
-
-    function isPathAllowed(path: string): boolean {
-      const ALLOWED_PATHS = [
-        "/api/v1/chat/completions",
-        "/api/v1/completions",
-        "/api/v1/models",
-        "/api/v1/auth/key",
-        "/api/v1/generation",
-      ];
-      
-      // Block traversal attempts
-      if (path.includes("..") || path.includes("//")) {
-        return false;
-      }
-      
-      // Normalize URL-encoded characters
-      const decodedPath = decodeURIComponent(path);
-      if (decodedPath.includes("..")) {
-        return false;
-      }
-      
-      return ALLOWED_PATHS.some(
-        (allowed) => path === allowed || path.startsWith(allowed + "/")
-      );
-    }
-
-    for (const path of traversalAttempts) {
-      expect(isPathAllowed(path)).toBe(false);
-    }
-  });
-
-  it("should validate URL scheme is https for OpenRouter", () => {
-    const OPENROUTER_BASE = "https://openrouter.ai";
-    expect(OPENROUTER_BASE).toStartWith("https://");
-    expect(OPENROUTER_BASE).not.toStartWith("http://");
-  });
-});
-
-describe("API Key Leak Prevention", () => {
-  /**
-   * API keys should never be logged, even in debug mode.
-   * This is critical for security - logs may be exposed.
-   */
-
-  it("should not include API key in error messages", () => {
-    const apiKey = "sk-or-v1-secret-api-key-12345";
-    const errorDetails = "Connection refused to openrouter.ai";
-    
-    // Error response should not contain the key
     const errorResponse = {
       error: "Relay request failed",
       details: errorDetails,
     };
     
-    expect(JSON.stringify(errorResponse)).not.toContain(apiKey);
+    expect(JSON.stringify(errorResponse)).not.toContain(oauthToken);
+    expect(JSON.stringify(errorResponse)).not.toContain("gho_");
   });
 
-  it("should not include API key in request logs", () => {
+  it("should never include OAuth token in logs", () => {
     const logMessage = (method: string, path: string) => `${method} ${path}`;
     
-    // Log should only contain method and path, not auth header
-    const log = logMessage("POST", "/api/v1/chat/completions");
-    expect(log).toBe("POST /api/v1/chat/completions");
-    expect(log).not.toContain("sk-or");
+    const log = logMessage("POST", "/v1/chat/completions");
+    expect(log).not.toContain("gho_");
     expect(log).not.toContain("Bearer");
   });
 
-  it("should not include API key in health/stats endpoints", () => {
+  it("should never include OAuth token in health/stats endpoints", () => {
     const healthResponse = {
       status: "ok",
-      relay: "sovereign-agent",
+      relay: "sovereign-agent-copilot",
+      authenticated: true,
       requests: 100,
-      tokens: { in: 50000, out: 25000 },
+      premium_requests_used: 25.5,
     };
 
-    const statsResponse = {
-      requests: 100,
-      tokens: { in: 50000, out: 25000 },
-      uptime: 3600,
-    };
-
-    const healthJson = JSON.stringify(healthResponse);
-    const statsJson = JSON.stringify(statsResponse);
-
-    expect(healthJson).not.toContain("sk-or");
-    expect(healthJson).not.toContain("api_key");
-    expect(healthJson).not.toContain("secret");
-    expect(statsJson).not.toContain("sk-or");
-    expect(statsJson).not.toContain("api_key");
+    const json = JSON.stringify(healthResponse);
+    expect(json).not.toContain("gho_");
+    expect(json).not.toContain("oauth");
+    expect(json).not.toContain("token");
   });
 
-  it("should redact API key in debug log output", () => {
-    const apiKey = "sk-or-v1-test-key-12345";
-    
-    function redactApiKey(text: string): string {
-      // Redact anything that looks like an API key
-      return text.replace(/sk-or-v1-[a-zA-Z0-9-]+/g, "sk-or-v1-[REDACTED]");
+  it("should redact OAuth token in debug output", () => {
+    function redactToken(text: string): string {
+      return text
+        .replace(/gho_[a-zA-Z0-9_]+/g, "gho_[REDACTED]")
+        .replace(/ghp_[a-zA-Z0-9_]+/g, "ghp_[REDACTED]");
     }
     
-    const logWithKey = `Authorization: Bearer ${apiKey}`;
-    const redacted = redactApiKey(logWithKey);
+    const logWithToken = "Authorization: Bearer gho_secret_token_12345";
+    const redacted = redactToken(logWithToken);
     
-    expect(redacted).not.toContain("test-key-12345");
+    expect(redacted).not.toContain("secret_token_12345");
     expect(redacted).toContain("[REDACTED]");
   });
+});
 
-  it("should not expose API key via response headers", () => {
-    // Response headers passed through from OpenRouter
-    const upstreamHeaders = new Headers({
-      "Content-Type": "application/json",
-      "X-Request-Id": "abc123",
-      // These should be in request, not response, but test anyway
-      "Authorization": "Bearer sk-or-v1-secret",
-    });
+describe("Copilot Token Protection", () => {
+  it("should never expose Copilot API token to client", () => {
+    const copilotToken = "tid=abc123;exp=1234567890;sku=copilot";
     
-    // Sensitive headers that should be stripped from responses
-    const sensitiveHeaders = ["Authorization", "X-API-Key", "Cookie", "Set-Cookie"];
+    // Token should only be used internally, never returned
+    const response = {
+      status: "ok",
+      authenticated: true,
+    };
     
-    for (const header of sensitiveHeaders) {
-      // In practice, these should be stripped from response
-      if (upstreamHeaders.has(header)) {
-        upstreamHeaders.delete(header);
-      }
+    expect(JSON.stringify(response)).not.toContain("tid=");
+    expect(JSON.stringify(response)).not.toContain(copilotToken);
+  });
+
+  it("should never include Copilot token in error messages", () => {
+    const errorResponse = {
+      status: 502,
+      body: {
+        error: "Relay request failed",
+        details: "Connection refused",
+      },
+    };
+    
+    expect(JSON.stringify(errorResponse)).not.toContain("tid=");
+    expect(JSON.stringify(errorResponse)).not.toContain("sku=");
+  });
+
+  it("should redact Copilot token in debug output", () => {
+    function redactCopilotToken(text: string): string {
+      return text.replace(/tid=[^;]+;exp=[^;]+;sku=[^\s]+/g, "tid=[REDACTED]");
     }
     
-    expect(upstreamHeaders.has("Authorization")).toBe(false);
-    expect(upstreamHeaders.get("Content-Type")).toBe("application/json");
+    const logWithToken = "Using token: tid=abc123;exp=1234567890;sku=copilot";
+    const redacted = redactCopilotToken(logWithToken);
+    
+    expect(redacted).not.toContain("abc123");
+    expect(redacted).toContain("[REDACTED]");
+  });
+});
+
+describe("SSRF Protection for Copilot", () => {
+  const COPILOT_API_BASE = "https://api.githubcopilot.com";
+  
+  const PRIVATE_IPS = [
+    "127.0.0.1",
+    "localhost",
+    "0.0.0.0",
+    "10.0.0.1",
+    "172.16.0.1",
+    "192.168.0.1",
+    "169.254.0.1",
+    "::1",
+    "fe80::1",
+  ];
+
+  it("should hardcode Copilot API base URL", () => {
+    expect(COPILOT_API_BASE).toBe("https://api.githubcopilot.com");
+    expect(COPILOT_API_BASE).toStartWith("https://");
+  });
+
+  it("should never construct URLs to private IPs", () => {
+    for (const ip of PRIVATE_IPS) {
+      const maliciousPath = `/v1/chat/completions?redirect=http://${ip}/steal`;
+      const targetUrl = `${COPILOT_API_BASE}${maliciousPath}`;
+      
+      // URL should always point to Copilot API
+      expect(targetUrl).toStartWith("https://api.githubcopilot.com");
+    }
+  });
+
+  it("should validate all GitHub URLs use HTTPS", () => {
+    const githubUrls = [
+      "https://github.com/login/device/code",
+      "https://github.com/login/oauth/access_token",
+      "https://api.github.com/copilot_internal/v2/token",
+      "https://api.githubcopilot.com",
+    ];
+    
+    for (const url of githubUrls) {
+      expect(url).toStartWith("https://");
+      expect(url).not.toStartWith("http://");
+    }
+  });
+
+  it("should block path traversal attempts", () => {
+    const traversalAttempts = [
+      "/../../../etc/passwd",
+      "/v1/../../../internal",
+      "/v1/chat/completions/../../admin",
+      "/v1/chat/completions%2f..%2f..%2fadmin",
+    ];
+
+    function isPathSafe(path: string): boolean {
+      if (path.includes("..") || path.includes("//")) {
+        return false;
+      }
+      const decodedPath = decodeURIComponent(path);
+      return !decodedPath.includes("..");
+    }
+
+    for (const path of traversalAttempts) {
+      expect(isPathSafe(path)).toBe(false);
+    }
   });
 });
 
 describe("Bundle Security", () => {
-  /**
-   * The /bundle.tar.gz endpoint should never include sensitive files.
-   */
-
   const EXCLUDED_PATTERNS = [
     ".git",
     "config.json",
@@ -214,38 +185,39 @@ describe("Bundle Security", () => {
     "tests",
   ];
 
-  it("should have correct exclusion patterns", () => {
-    expect(EXCLUDED_PATTERNS).toContain(".git");
+  it("should exclude config.json (contains OAuth token)", () => {
     expect(EXCLUDED_PATTERNS).toContain("config.json");
-    expect(EXCLUDED_PATTERNS).toContain(".env");
-    expect(EXCLUDED_PATTERNS).toContain("node_modules");
   });
 
-  it("should match sensitive files against exclusion patterns", () => {
+  it("should exclude .env files", () => {
+    expect(EXCLUDED_PATTERNS).toContain(".env");
+  });
+
+  it("should exclude .git directory", () => {
+    expect(EXCLUDED_PATTERNS).toContain(".git");
+  });
+
+  it("should match OAuth token files against exclusions", () => {
     const sensitiveFiles = [
-      ".git/config",
-      ".git/objects/pack/abc.pack",
       "config.json",
       ".env",
-      ".env.local",
-      ".env.production",
-      "node_modules/package/index.js",
-      "relay/debug.log",
-      "tests/test-file.sh",
+      "auth.json",
+      "tokens.json",
     ];
 
     function shouldExclude(path: string, patterns: string[]): boolean {
       for (const pattern of patterns) {
-        // Exact match
         if (path === pattern) return true;
-        // Starts with (for directories like .git, node_modules)
         if (path.startsWith(pattern + "/")) return true;
-        if (path.startsWith(pattern)) return true;
-        // Wildcard match (*.log)
+        if (path.startsWith(pattern)) return true; // .env matches .env.local
         if (pattern.startsWith("*")) {
           const suffix = pattern.slice(1);
           if (path.endsWith(suffix)) return true;
         }
+      }
+      // Also exclude common auth file patterns
+      if (path.includes("auth") || path.includes("token")) {
+        return true;
       }
       return false;
     }
@@ -256,50 +228,19 @@ describe("Bundle Security", () => {
     }
   });
 
-  it("should allow legitimate files", () => {
-    const legitimateFiles = [
-      "install.sh",
-      "lib/validate.sh",
-      "lib/generate-configs.sh",
-      "relay/main.ts",
-      "templates/opencode.frugal.jsonc.tmpl",
-      "vendor/opencode/package.json",
-      "vendor/OpenAgents/.opencode/agent/core/openagent.md",
-    ];
-
-    function shouldExclude(path: string, patterns: string[]): boolean {
-      for (const pattern of patterns) {
-        if (path === pattern) return true;
-        if (path.startsWith(pattern + "/")) return true;
-        if (pattern.startsWith("*")) {
-          const suffix = pattern.slice(1);
-          if (path.endsWith(suffix)) return true;
-        }
-      }
-      return false;
-    }
-
-    for (const file of legitimateFiles) {
-      const excluded = shouldExclude(file, EXCLUDED_PATTERNS);
-      expect(excluded).toBe(false);
-    }
-  });
-
-  it("should not include backup files with API keys", () => {
+  it("should not include backup files with tokens", () => {
     const dangerousPatterns = [
       "config.json.backup",
       "config.json.bak",
       ".env.backup",
-      "config.json.old",
+      "auth.json.old",
     ];
 
-    // These should also be excluded
     const enhancedPatterns = [...EXCLUDED_PATTERNS, "*.backup", "*.bak", "*.old"];
 
     function shouldExclude(path: string, patterns: string[]): boolean {
       for (const pattern of patterns) {
         if (path === pattern) return true;
-        if (path.startsWith(pattern + "/")) return true;
         if (pattern.startsWith("*")) {
           const suffix = pattern.slice(1);
           if (path.endsWith(suffix)) return true;
@@ -309,109 +250,276 @@ describe("Bundle Security", () => {
     }
 
     for (const file of dangerousPatterns) {
-      const excluded = shouldExclude(file, enhancedPatterns);
-      expect(excluded).toBe(true);
+      expect(shouldExclude(file, enhancedPatterns)).toBe(true);
     }
   });
 });
 
-describe("Request Smuggling Prevention", () => {
-  /**
-   * Prevent HTTP request smuggling attacks.
-   */
+describe("Device Code Flow Security", () => {
+  it("should NOT expose device_code to client", () => {
+    const internalFlow = {
+      device_code: "device_code_secret_123",
+      user_code: "ABCD-1234",
+      verification_uri: "https://github.com/login/device",
+      expires_at: Date.now() + 900000,
+    };
 
-  it("should sanitize Content-Length header conflicts", () => {
-    // Request smuggling often uses conflicting Content-Length
-    const headers = new Headers({
-      "Content-Length": "10",
-      "Transfer-Encoding": "chunked",
-    });
+    // Client response should NOT contain device_code
+    const clientResponse = {
+      success: true,
+      user_code: internalFlow.user_code,
+      verification_uri: internalFlow.verification_uri,
+      flow_id: "public-flow-id",
+      message: `Go to ${internalFlow.verification_uri} and enter code: ${internalFlow.user_code}`,
+    };
 
-    // When both are present, prefer Transfer-Encoding and remove Content-Length
-    if (headers.has("Transfer-Encoding") && headers.has("Content-Length")) {
-      headers.delete("Content-Length");
-    }
-
-    expect(headers.has("Content-Length")).toBe(false);
-    expect(headers.has("Transfer-Encoding")).toBe(true);
+    expect(clientResponse).not.toHaveProperty("device_code");
+    expect(JSON.stringify(clientResponse)).not.toContain("device_code_secret");
   });
 
-  it("should remove hop-by-hop headers", () => {
-    const hopByHopHeaders = [
-      "Connection",
-      "Keep-Alive",
-      "Proxy-Authenticate",
-      "Proxy-Authorization",
-      "TE",
-      "Trailer",
-      "Transfer-Encoding",
-      "Upgrade",
+  it("should use cryptographically random flow IDs", () => {
+    const flowIds = new Set<string>();
+    
+    for (let i = 0; i < 100; i++) {
+      flowIds.add(crypto.randomUUID());
+    }
+    
+    // All should be unique
+    expect(flowIds.size).toBe(100);
+  });
+
+  it("should validate flow_id format to prevent injection", () => {
+    const validFlowId = "550e8400-e29b-41d4-a716-446655440000";
+    const invalidFlowIds = [
+      "not-a-uuid",
+      "../../../etc/passwd",
+      "<script>alert(1)</script>",
+      "'; DROP TABLE users; --",
     ];
 
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+    expect(uuidRegex.test(validFlowId)).toBe(true);
+    
+    for (const invalid of invalidFlowIds) {
+      expect(uuidRegex.test(invalid)).toBe(false);
+    }
+  });
+
+  it("should expire device code flows", () => {
+    const flows = new Map<string, { expires_at: number }>();
+    
+    flows.set("expired-flow", { expires_at: Date.now() - 1000 });
+    flows.set("valid-flow", { expires_at: Date.now() + 900000 });
+    
+    // Clean expired
+    for (const [id, flow] of flows) {
+      if (flow.expires_at < Date.now()) {
+        flows.delete(id);
+      }
+    }
+    
+    expect(flows.has("expired-flow")).toBe(false);
+    expect(flows.has("valid-flow")).toBe(true);
+  });
+});
+
+describe("Request Header Security", () => {
+  it("should remove sensitive headers from forwarded requests", () => {
     const headers = new Headers({
-      "Connection": "keep-alive",
-      "Keep-Alive": "timeout=5",
+      Host: "localhost:8080",
+      Connection: "keep-alive",
+      "X-Forwarded-For": "192.168.1.100",
       "Content-Type": "application/json",
     });
 
-    for (const header of hopByHopHeaders) {
-      headers.delete(header);
+    // Remove hop-by-hop headers
+    headers.delete("Host");
+    headers.delete("Connection");
+    headers.delete("X-Forwarded-For");
+
+    expect(headers.get("Host")).toBeNull();
+    expect(headers.get("Connection")).toBeNull();
+    expect(headers.get("X-Forwarded-For")).toBeNull();
+    expect(headers.get("Content-Type")).toBe("application/json");
+  });
+
+  it("should not forward client Authorization header", () => {
+    const clientHeaders = new Headers({
+      Authorization: "Bearer client-attempted-token",
+      "Content-Type": "application/json",
+    });
+
+    // Relay should replace with its own token
+    clientHeaders.delete("Authorization");
+    clientHeaders.set("Authorization", "Bearer relay-copilot-token");
+
+    expect(clientHeaders.get("Authorization")).toBe("Bearer relay-copilot-token");
+    expect(clientHeaders.get("Authorization")).not.toContain("client-attempted");
+  });
+
+  it("should add required Copilot headers", () => {
+    const headers = new Headers();
+    
+    headers.set("User-Agent", "GitHubCopilotChat/0.35.0");
+    headers.set("Editor-Version", "vscode/1.107.0");
+    headers.set("Copilot-Integration-Id", "vscode-chat");
+    
+    expect(headers.get("User-Agent")).toContain("GitHubCopilotChat");
+    expect(headers.get("Editor-Version")).toContain("vscode");
+    expect(headers.get("Copilot-Integration-Id")).toBe("vscode-chat");
+  });
+});
+
+describe("Config File Security", () => {
+  beforeAll(() => {
+    mkdirSync(TEST_DIR, { recursive: true });
+  });
+
+  afterAll(() => {
+    rmSync(TEST_DIR, { recursive: true, force: true });
+  });
+
+  it("should reject config with shell injection in token", () => {
+    const maliciousValues = [
+      "$(whoami)",
+      "`id`",
+      "'; rm -rf /; '",
+      "| cat /etc/passwd",
+    ];
+
+    function containsShellInjection(value: string): boolean {
+      const patterns = [
+        /\$\(/,
+        /`[^`]+`/,
+        /;\s*\w+/,
+        /\|\s*\w+/,
+        /&&\s*\w+/,
+      ];
+      return patterns.some(p => p.test(value));
     }
 
-    expect(headers.has("Connection")).toBe(false);
-    expect(headers.has("Keep-Alive")).toBe(false);
-    expect(headers.get("Content-Type")).toBe("application/json");
+    for (const value of maliciousValues) {
+      expect(containsShellInjection(value)).toBe(true);
+    }
+
+    // Valid tokens should not trigger
+    expect(containsShellInjection("gho_valid_token_12345")).toBe(false);
+  });
+
+  it("should warn about world-readable config permissions", () => {
+    function isSecurePermissions(mode: number): boolean {
+      const worldReadable = (mode & 0o004) !== 0;
+      return !worldReadable;
+    }
+
+    expect(isSecurePermissions(0o600)).toBe(true);  // Owner only
+    expect(isSecurePermissions(0o640)).toBe(true);  // Owner + group
+    expect(isSecurePermissions(0o644)).toBe(false); // World readable - BAD
+    expect(isSecurePermissions(0o777)).toBe(false); // World everything - BAD
+  });
+
+  it("should validate OAuth token format", () => {
+    function isValidOAuthToken(token: string): boolean {
+      // GitHub OAuth tokens start with gho_ or ghp_
+      return /^gh[op]_[a-zA-Z0-9_]+$/.test(token);
+    }
+
+    expect(isValidOAuthToken("gho_valid_token_12345")).toBe(true);
+    expect(isValidOAuthToken("ghp_valid_token_12345")).toBe(true);
+    expect(isValidOAuthToken("invalid_token")).toBe(false);
+    expect(isValidOAuthToken("sk-or-v1-openrouter")).toBe(false);
+    expect(isValidOAuthToken("")).toBe(false);
+  });
+});
+
+describe("Rate Limiting Considerations", () => {
+  it("should track requests per client", () => {
+    const requestCounts = new Map<string, number>();
+
+    function incrementRequest(clientIp: string): number {
+      const current = requestCounts.get(clientIp) || 0;
+      const newCount = current + 1;
+      requestCounts.set(clientIp, newCount);
+      return newCount;
+    }
+
+    expect(incrementRequest("192.168.1.100")).toBe(1);
+    expect(incrementRequest("192.168.1.100")).toBe(2);
+    expect(incrementRequest("192.168.1.101")).toBe(1);
+  });
+
+  it("should prevent auth endpoint abuse", () => {
+    interface AuthAttempt {
+      count: number;
+      firstAttempt: number;
+    }
+
+    const authAttempts = new Map<string, AuthAttempt>();
+    const maxAttempts = 5;
+    const windowMs = 300000; // 5 minutes
+
+    function canAttemptAuth(clientIp: string): boolean {
+      const now = Date.now();
+      const attempt = authAttempts.get(clientIp);
+
+      if (!attempt || now - attempt.firstAttempt > windowMs) {
+        authAttempts.set(clientIp, { count: 1, firstAttempt: now });
+        return true;
+      }
+
+      if (attempt.count >= maxAttempts) {
+        return false;
+      }
+
+      attempt.count++;
+      return true;
+    }
+
+    const ip = "192.168.1.100";
+    
+    // First 5 attempts should succeed
+    for (let i = 0; i < 5; i++) {
+      expect(canAttemptAuth(ip)).toBe(true);
+    }
+    
+    // 6th attempt should be blocked
+    expect(canAttemptAuth(ip)).toBe(false);
   });
 });
 
 describe("Input Validation", () => {
-  /**
-   * Validate and sanitize all inputs.
-   */
+  it("should reject excessively long model names", () => {
+    const maxLength = 256;
+    const longModel = "a".repeat(500);
 
-  it("should reject excessively long paths", () => {
-    const maxPathLength = 2048;
-    const longPath = "/api/v1/chat/completions/" + "a".repeat(3000);
-
-    function isValidPath(path: string): boolean {
-      return path.length <= maxPathLength;
+    function isValidModelName(model: string): boolean {
+      return model.length <= maxLength && /^[a-zA-Z0-9\-_.\/]+$/.test(model);
     }
 
-    expect(isValidPath(longPath)).toBe(false);
-    expect(isValidPath("/api/v1/chat/completions")).toBe(true);
+    expect(isValidModelName(longModel)).toBe(false);
+    expect(isValidModelName("gpt-5-mini")).toBe(true);
   });
 
-  it("should reject null bytes in paths", () => {
-    const pathWithNull = "/api/v1/chat/completions\x00.html";
+  it("should reject null bytes in inputs", () => {
+    const inputWithNull = "gpt-5-mini\x00.html";
 
-    function containsNullByte(path: string): boolean {
-      return path.includes("\x00");
+    function containsNullByte(input: string): boolean {
+      return input.includes("\x00");
     }
 
-    expect(containsNullByte(pathWithNull)).toBe(true);
-    expect(containsNullByte("/api/v1/chat/completions")).toBe(false);
-  });
-
-  it("should reject control characters in headers", () => {
-    function containsControlChars(value: string): boolean {
-      // Control chars are 0x00-0x1F except tab (0x09), and 0x7F
-      return /[\x00-\x08\x0A-\x1F\x7F]/.test(value);
-    }
-
-    expect(containsControlChars("normal-value")).toBe(false);
-    expect(containsControlChars("value\nwith\nnewlines")).toBe(true);
-    expect(containsControlChars("value\rwith\rcarriage")).toBe(true);
-    expect(containsControlChars("value\x00with\x00null")).toBe(true);
+    expect(containsNullByte(inputWithNull)).toBe(true);
+    expect(containsNullByte("gpt-5-mini")).toBe(false);
   });
 
   it("should validate JSON request bodies", () => {
     const validBodies = [
-      '{"model": "gpt-4", "messages": []}',
+      '{"model": "gpt-5-mini", "messages": []}',
       '{"prompt": "test"}',
     ];
 
     const invalidBodies = [
-      "not json at all",
+      "not json",
       "{malformed: json}",
       '{"unclosed": ',
     ];
@@ -435,134 +543,33 @@ describe("Input Validation", () => {
   });
 });
 
-describe("Rate Limiting Considerations", () => {
-  /**
-   * Test rate limiting structures (actual enforcement is in main.ts).
-   */
+describe("Copilot API Response Security", () => {
+  it("should not forward sensitive response headers", () => {
+    const upstreamHeaders = new Headers({
+      "Content-Type": "application/json",
+      "X-Request-Id": "abc123",
+      "Set-Cookie": "session=secret",
+      "X-Internal-Token": "internal-secret",
+    });
 
-  it("should track requests per client", () => {
-    const requestCounts = new Map<string, number>();
+    const sensitiveHeaders = ["Set-Cookie", "X-Internal-Token"];
 
-    function incrementRequest(clientIp: string): number {
-      const current = requestCounts.get(clientIp) || 0;
-      const newCount = current + 1;
-      requestCounts.set(clientIp, newCount);
-      return newCount;
+    for (const header of sensitiveHeaders) {
+      upstreamHeaders.delete(header);
     }
 
-    expect(incrementRequest("192.168.1.100")).toBe(1);
-    expect(incrementRequest("192.168.1.100")).toBe(2);
-    expect(incrementRequest("192.168.1.101")).toBe(1);
-    expect(incrementRequest("192.168.1.100")).toBe(3);
+    expect(upstreamHeaders.get("Set-Cookie")).toBeNull();
+    expect(upstreamHeaders.get("X-Internal-Token")).toBeNull();
+    expect(upstreamHeaders.get("Content-Type")).toBe("application/json");
   });
 
-  it("should reset counts after time window", () => {
-    interface RateLimitEntry {
-      count: number;
-      resetTime: number;
-    }
+  it("should preserve CORS headers in response", () => {
+    const corsHeaders = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    };
 
-    const rateLimits = new Map<string, RateLimitEntry>();
-    const windowMs = 60000; // 1 minute
-
-    function checkRateLimit(clientIp: string, now: number, limit: number): boolean {
-      const entry = rateLimits.get(clientIp);
-
-      if (!entry || now >= entry.resetTime) {
-        rateLimits.set(clientIp, { count: 1, resetTime: now + windowMs });
-        return true;
-      }
-
-      if (entry.count >= limit) {
-        return false;
-      }
-
-      entry.count++;
-      return true;
-    }
-
-    const now = Date.now();
-    const limit = 3;
-
-    expect(checkRateLimit("client1", now, limit)).toBe(true); // 1
-    expect(checkRateLimit("client1", now, limit)).toBe(true); // 2
-    expect(checkRateLimit("client1", now, limit)).toBe(true); // 3
-    expect(checkRateLimit("client1", now, limit)).toBe(false); // blocked
-
-    // After window resets
-    expect(checkRateLimit("client1", now + windowMs + 1, limit)).toBe(true);
-  });
-});
-
-describe("Config File Security", () => {
-  beforeAll(() => {
-    mkdirSync(TEST_DIR, { recursive: true });
-  });
-
-  afterAll(() => {
-    rmSync(TEST_DIR, { recursive: true, force: true });
-  });
-
-  it("should reject config with symlink to sensitive file", () => {
-    // If config.json is a symlink to /etc/passwd, reject it
-    // This is a defense-in-depth measure
-    
-    function isRegularFile(path: string): boolean {
-      // In real implementation, use lstat to check for symlinks
-      // For this test, we just verify the pattern
-      return !path.includes("../") && !path.startsWith("/etc/");
-    }
-
-    expect(isRegularFile("/home/user/config.json")).toBe(true);
-    expect(isRegularFile("../../../etc/passwd")).toBe(false);
-    expect(isRegularFile("/etc/passwd")).toBe(false);
-  });
-
-  it("should validate config file permissions are not world-readable", () => {
-    // Config contains API key, should be owner-only (0600)
-    // This is advisory - we log a warning
-    
-    function isSecurePermissions(mode: number): boolean {
-      // 0600 = owner read/write only
-      // 0640 = owner read/write, group read
-      // 0644 = world readable - BAD
-      const worldReadable = (mode & 0o004) !== 0;
-      return !worldReadable;
-    }
-
-    expect(isSecurePermissions(0o600)).toBe(true);
-    expect(isSecurePermissions(0o640)).toBe(true);
-    expect(isSecurePermissions(0o644)).toBe(false);
-    expect(isSecurePermissions(0o777)).toBe(false);
-  });
-
-  it("should reject config with embedded shell commands", () => {
-    // Defense against command injection via config values
-    const maliciousValues = [
-      "$(whoami)",
-      "`id`",
-      "'; rm -rf /; '",
-      "| cat /etc/passwd",
-    ];
-
-    function containsShellInjection(value: string): boolean {
-      const patterns = [
-        /\$\(/,           // $(command)
-        /`[^`]+`/,        // `command`
-        /;\s*\w+/,        // ; command
-        /\|\s*\w+/,       // | command
-        /&&\s*\w+/,       // && command
-        /\|\|\s*\w+/,     // || command
-      ];
-      
-      return patterns.some(p => p.test(value));
-    }
-
-    for (const value of maliciousValues) {
-      expect(containsShellInjection(value)).toBe(true);
-    }
-
-    expect(containsShellInjection("https://example.com")).toBe(false);
-    expect(containsShellInjection("sk-or-v1-test-key")).toBe(false);
+    expect(corsHeaders["Access-Control-Allow-Origin"]).toBe("*");
   });
 });

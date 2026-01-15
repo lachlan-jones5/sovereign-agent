@@ -48,12 +48,12 @@ fi
 
 # Test 2: ALLOWED_HOSTS array contains required hosts
 run_test
-if grep -q "openrouter.ai" "$FIREWALL_SCRIPT" && \
+if grep -q "api.githubcopilot.com" "$FIREWALL_SCRIPT" && \
    grep -q "registry.npmjs.org" "$FIREWALL_SCRIPT" && \
    grep -q "api.github.com" "$FIREWALL_SCRIPT"; then
-    pass "ALLOWED_HOSTS contains required hosts (openrouter, npm, github)"
+    pass "ALLOWED_HOSTS contains required hosts (githubcopilot, npm, github)"
 else
-    fail "ALLOWED_HOSTS contains required hosts" "openrouter, npm, github" "missing hosts"
+    fail "ALLOWED_HOSTS contains required hosts" "githubcopilot, npm, github" "missing hosts"
 fi
 
 # Test 3: BLOCKED_RANGES covers private networks

@@ -68,7 +68,7 @@ fi
 run_test
 cat > "$TEST_DIR/large_config.json" << 'EOF'
 {
-  "openrouter_api_key": "sk-or-v1-test",
+  "relay_url": "http://localhost:8080",
   "site_url": "https://example.com",
   "site_name": "Test Site",
   "field_1": "value_1",

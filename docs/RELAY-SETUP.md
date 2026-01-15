@@ -1,49 +1,69 @@
 # Relay Server Setup
 
-Detailed guide for setting up the relay server on your trusted machine.
+Detailed guide for setting up the relay server on your trusted machine with GitHub Copilot authentication.
 
 ## Prerequisites
 
 - A trusted machine (Raspberry Pi, home server, VPS)
 - Network access to the machine from your laptop
 - Docker (recommended) or Bun runtime
+- GitHub Copilot subscription (Pro or Pro+)
 
-## Quick Setup (One-liner)
+## Quick Setup
 
-```bash
-# Interactive - prompts for API key
-curl -fsSL https://raw.githubusercontent.com/lachlan-jones5/sovereign-agent/master/scripts/setup-relay.sh | bash
-
-# Non-interactive
-OPENROUTER_API_KEY=sk-or-v1-... \
-RELAY_PORT=8081 \
-curl -fsSL https://raw.githubusercontent.com/lachlan-jones5/sovereign-agent/master/scripts/setup-relay.sh | bash
-```
-
-## Client Installation with Tier Selection
-
-When installing the client (on the Client VM), you can select a model tier:
+### 1. Clone and Start Relay
 
 ```bash
-# Default (frugal tier) - ~$20/month, best value
-curl -fsSL http://localhost:8081/setup | bash
+# Clone the repository
+git clone https://github.com/lachlan-jones5/sovereign-agent.git
+cd sovereign-agent
 
-# Free tier - $0/month, uses only free models
-curl -fsSL http://localhost:8081/setup | TIER=free bash
+# Create minimal config
+cat > config.json << 'EOF'
+{
+  "relay": {
+    "enabled": true,
+    "mode": "server",
+    "port": 8080
+  }
+}
+EOF
 
-# Premium tier - best quality, higher cost
-curl -fsSL http://localhost:8081/setup | TIER=premium bash
+# Start relay (with Docker)
+docker compose -f docker-compose.relay.yml up -d
+
+# Or start natively (requires Bun)
+cd relay && bun run main.ts
 ```
 
-### Tier Comparison
+### 2. Authenticate with GitHub Copilot
 
-| Tier | Monthly Cost | Primary Models | Use Case |
-|------|--------------|----------------|----------|
-| `free` | $0 | DeepSeek R1:free, Devstral:free, Qwen3-Coder:free | Learning, experimentation, budget-constrained |
-| `frugal` | ~$20 | DeepSeek V3.2, GPT-4o-mini, Claude Haiku | Daily development (recommended) |
-| `premium` | ~$100+ | Claude Opus 4.5, Claude Sonnet 4.5, o3 | Complex projects, maximum quality |
+Open your browser and visit the relay's auth page:
 
-See [Model Selection Guide](MODELS.md) for detailed model information per tier.
+```
+http://localhost:8080/auth/device
+```
+
+You'll see a page with:
+- A **user code** (e.g., `ABCD-1234`)
+- A link to `https://github.com/login/device`
+
+1. Click the GitHub link or go to `https://github.com/login/device`
+2. Enter the user code
+3. Authorize "GitHub Copilot" access
+4. Return to the relay page - it will show "Authentication successful"
+
+The OAuth token is now saved in `config.json`.
+
+### 3. Install Client on VM
+
+From your Client VM (via SSH tunnel):
+
+```bash
+curl -fsSL http://localhost:8080/setup | bash
+```
+
+This downloads sovereign-agent, installs OpenCode, and configures it to use the relay.
 
 ## Manual Setup
 
@@ -53,8 +73,6 @@ See [Model Selection Guide](MODELS.md) for detailed model information per tier.
 git clone https://github.com/lachlan-jones5/sovereign-agent.git
 cd sovereign-agent
 ```
-
-Note: Server setup doesn't need submodules (fast, ~100KB clone).
 
 ### 2. Create Configuration
 
@@ -66,45 +84,53 @@ Edit `config.json`:
 
 ```json
 {
-  "openrouter_api_key": "sk-or-v1-your-key-here",
-  "site_url": "https://github.com/yourusername/sovereign-agent",
-  "site_name": "SovereignAgent",
-
-  "models": {
-    "orchestrator": "anthropic/claude-sonnet-4.5",
-    "planner": "anthropic/claude-sonnet-4.5",
-    "librarian": "google/gemini-2.5-flash",
-    "fallback": "meta-llama/llama-3.3-70b-instruct"
-  },
-
   "relay": {
     "enabled": true,
     "mode": "server",
-    "port": 8081
+    "port": 8080
   }
 }
 ```
+
+Note: `github_oauth_token` will be added automatically after device code auth.
 
 ### 3. Start the Relay
 
 **With Docker (recommended):**
 
 ```bash
-RELAY_HOST=0.0.0.0 RELAY_PORT=8081 docker compose -f docker-compose.relay.yml up -d
+RELAY_HOST=0.0.0.0 RELAY_PORT=8080 docker compose -f docker-compose.relay.yml up -d
 ```
 
 **Native (requires Bun):**
 
 ```bash
 cd relay
-RELAY_HOST=0.0.0.0 RELAY_PORT=8081 ./start-relay.sh daemon
+RELAY_HOST=0.0.0.0 RELAY_PORT=8080 bun run main.ts
 ```
 
 ### 4. Verify
 
 ```bash
-curl http://localhost:8081/health
-# {"status":"ok"}
+curl http://localhost:8080/health
+# {"status":"ok","authenticated":false}
+```
+
+### 5. Authenticate
+
+```bash
+# Start device code flow
+curl http://localhost:8080/auth/device
+
+# Or visit in browser for a nicer UI
+open http://localhost:8080/auth/device
+```
+
+After authentication:
+
+```bash
+curl http://localhost:8080/health
+# {"status":"ok","authenticated":true}
 ```
 
 ## Environment Variables
@@ -115,7 +141,6 @@ curl http://localhost:8081/health
 | `RELAY_PORT` | `8080` | Port to listen on |
 | `CONFIG_PATH` | `../config.json` | Path to config file |
 | `LOG_LEVEL` | `info` | Log level: debug, info, warn, error |
-| `OPENROUTER_API_KEY` | - | API key (alternative to config.json) |
 
 ## Docker Configuration
 
@@ -130,11 +155,11 @@ services:
     container_name: sovereign-relay
     restart: unless-stopped
     ports:
-      - "${RELAY_HOST:-127.0.0.1}:${RELAY_PORT:-8081}:${RELAY_PORT:-8081}"
+      - "${RELAY_HOST:-127.0.0.1}:${RELAY_PORT:-8080}:${RELAY_PORT:-8080}"
     volumes:
-      - ./config.json:/app/config.json:ro
+      - ./config.json:/app/config.json:rw
     environment:
-      - RELAY_PORT=${RELAY_PORT:-8081}
+      - RELAY_PORT=${RELAY_PORT:-8080}
       - RELAY_HOST=0.0.0.0
       - LOG_LEVEL=info
 ```
@@ -174,9 +199,9 @@ curl -fsSL https://bun.sh/install | bash
 cd relay
 
 # Foreground (for testing)
-./start-relay.sh
+bun run main.ts
 
-# Background daemon
+# Background with start script
 ./start-relay.sh daemon
 
 # Check status
@@ -195,35 +220,39 @@ If you have a firewall, allow the relay port:
 
 **nftables:**
 ```bash
-nft add rule inet filter input tcp dport 8081 accept
+nft add rule inet filter input tcp dport 8080 accept
 ```
 
 **ufw:**
 ```bash
-ufw allow 8081/tcp
+ufw allow 8080/tcp
 ```
 
 **iptables:**
 ```bash
-iptables -A INPUT -p tcp --dport 8081 -j ACCEPT
+iptables -A INPUT -p tcp --dport 8080 -j ACCEPT
 ```
 
 ## Security Considerations
 
 1. **Bind to 0.0.0.0 only if needed** - Use `127.0.0.1` if clients connect via SSH tunnel to localhost
 2. **Use SSH tunnels** - Even on trusted networks, SSH adds encryption
-3. **Keep API key in config.json** - Don't commit to git (it's in .gitignore)
-4. **Restrict network access** - Firewall the port to known IPs if possible
+3. **OAuth token stays on relay** - Never leaves the server, never sent to clients
+4. **Copilot token in memory only** - Not written to disk, auto-refreshed
+5. **Restrict network access** - Firewall the port to known IPs if possible
 
 ## Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/health` | GET | Returns `{"status":"ok"}` |
-| `/stats` | GET | Request stats, uptime, version |
+| `/health` | GET | Returns `{"status":"ok","authenticated":bool}` |
+| `/stats` | GET | Request stats, uptime, premium usage |
+| `/auth/device` | GET/POST | Start device code flow |
+| `/auth/poll` | POST | Poll for auth completion |
+| `/auth/status` | GET | Check auth status |
 | `/setup` | GET | Bash script for client setup |
 | `/bundle.tar.gz` | GET | Streamed tarball of repo |
-| `/api/v1/*` | ALL | Proxied to OpenRouter |
+| `/v1/*` | ALL | Proxied to GitHub Copilot API |
 
 ## Monitoring
 
@@ -231,10 +260,10 @@ Check relay status:
 
 ```bash
 # Health
-curl http://localhost:8081/health
+curl http://localhost:8080/health
 
-# Stats
-curl http://localhost:8081/stats | jq
+# Stats (includes premium request usage)
+curl http://localhost:8080/stats | jq
 ```
 
 Example stats output:
@@ -246,41 +275,40 @@ Example stats output:
     "success": 148,
     "error": 2
   },
-  "version": "1.0.0"
+  "premiumRequests": {
+    "used": 87.5,
+    "limit": 300
+  },
+  "version": "2.0.0"
 }
 ```
 
-## Troubleshooting
+## Token Refresh
 
-### Port already in use
+The relay automatically handles Copilot token management:
 
-```bash
-# Find what's using the port
-ss -tlnp | grep 8081
+1. OAuth token stored in `config.json` (permanent until revoked)
+2. Copilot API token exchanged on demand (30-minute expiry)
+3. Token cached in memory, refreshed 5 minutes before expiry
+4. If OAuth token revoked, re-authenticate via `/auth/device`
 
-# Kill existing relay
-docker stop sovereign-relay
-# or
-pkill -f 'bun.*main.ts'
-```
+## Re-authentication
 
-### Container won't start
+If you need to re-authenticate (e.g., token revoked):
 
 ```bash
-# Check logs
-docker logs sovereign-relay
+# Check current status
+curl http://localhost:8080/auth/status
 
-# Verify config.json is valid JSON
-jq . config.json
+# Start new device code flow
+curl -X POST http://localhost:8080/auth/device
+
+# Or visit in browser
+open http://localhost:8080/auth/device
 ```
-
-### Can't connect from laptop
-
-1. Check firewall allows port 8081
-2. Verify `RELAY_HOST=0.0.0.0` is set
-3. Test locally first: `curl http://localhost:8081/health`
 
 ## See Also
 
 - [Architecture](ARCHITECTURE.md) - System overview
-- [Alternative Setups](ALTERNATIVE-SETUPS.md) - Other deployment patterns
+- [Models](MODELS.md) - Available models and multipliers
+- [Troubleshooting](TROUBLESHOOTING.md) - Common issues and solutions

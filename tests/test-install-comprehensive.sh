@@ -302,21 +302,8 @@ test_sources_check_deps_script() {
     fi
 }
 
-test_sources_generate_configs_script() {
-    local name="Sources generate-configs.sh"
-    local content
-    content=$(cat "$INSTALL_SCRIPT")
-    
-    if echo "$content" | grep -q 'source.*generate-configs\.sh\|\. .*generate-configs\.sh'; then
-        pass "$name"
-    else
-        fail "$name" "source generate-configs.sh" "not found"
-    fi
-}
-
 test_sources_validate_script
 test_sources_check_deps_script
-test_sources_generate_configs_script
 
 # ============================================================================
 # WORKFLOW TESTS
@@ -352,21 +339,8 @@ test_calls_check_all_deps() {
     fi
 }
 
-test_calls_generate_all_configs() {
-    local name="Calls generate_all_configs"
-    local content
-    content=$(cat "$INSTALL_SCRIPT")
-    
-    if echo "$content" | grep -q 'generate_all_configs'; then
-        pass "$name"
-    else
-        fail "$name" "generate_all_configs call" "not found"
-    fi
-}
-
 test_validates_config
 test_calls_check_all_deps
-test_calls_generate_all_configs
 
 # ============================================================================
 # OUTPUT TESTS

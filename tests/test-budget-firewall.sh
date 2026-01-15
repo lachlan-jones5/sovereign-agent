@@ -121,14 +121,7 @@ else
     fail "monitor_usage function missing"
 fi
 
-# Test 13: Setup-limits includes OpenRouter dashboard URL
-if grep -q 'openrouter.ai/settings' "$LIB_DIR/budget-firewall.sh"; then
-    pass "Setup includes OpenRouter settings URL"
-else
-    fail "OpenRouter settings URL missing"
-fi
-
-# Test 14: Estimate includes Opus cost warning
+# Test 13: Estimate includes Opus cost warning
 if grep -q 'WARNING.*Opus' "$LIB_DIR/budget-firewall.sh" || grep -q 'iterations with Opus' "$LIB_DIR/budget-firewall.sh"; then
     pass "Estimate includes Opus cost warning"
 else

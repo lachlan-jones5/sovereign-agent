@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# validate.sh - Validate user's config.json
+# validate.sh - Validate user's config.json for Sovereign Agent
 
 # Only set -e when run directly, not when sourced
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
@@ -40,7 +40,6 @@ validate_config() {
         echo
         echo "Please create a config.json file. You can copy the example:"
         echo "  cp config.json.example config.json"
-        echo "  # Then edit config.json with your API keys"
         return 1
     fi
 
@@ -54,115 +53,42 @@ validate_config() {
 
     local errors=0
 
-    # Check if relay mode is enabled (client mode doesn't need API key)
+    # Check relay configuration
     local relay_enabled
     local relay_mode
     relay_enabled=$(jq -r '.relay.enabled // false' "$config_file")
     relay_mode=$(jq -r '.relay.mode // empty' "$config_file")
     
-    local is_relay_client=false
-    if [[ "$relay_enabled" == "true" && "$relay_mode" == "client" ]]; then
-        is_relay_client=true
-        log_info "Relay client mode detected - API key not required locally"
-    fi
-
-    # Check if tier is specified (tier-based config doesn't need models)
-    local tier
-    tier=$(jq -r '.tier // empty' "$config_file")
-    
-    local has_tier=false
-    if [[ -n "$tier" ]]; then
-        has_tier=true
-        case "$tier" in
-            free|frugal|premium)
-                log_info "Using tier: $tier (models will be configured from tier template)"
-                ;;
-            *)
-                log_warn "Unknown tier '$tier', will default to 'frugal'"
-                ;;
-        esac
-    fi
-
-    # Required fields - models only required if no tier is specified
-    local required_fields=(
-        ".site_url"
-        ".site_name"
-    )
-    
-    # Only require models if no tier is set
-    if [[ "$has_tier" == "false" ]]; then
-        required_fields+=(
-            ".models.orchestrator"
-            ".models.planner"
-            ".models.librarian"
-            ".models.fallback"
-        )
-    fi
-
-    for field in "${required_fields[@]}"; do
-        local value
-        value=$(jq -r "$field // empty" "$config_file")
-        
-        if [[ -z "$value" ]]; then
-            log_error "Missing required field: $field"
-            ((errors++))
-        fi
-    done
-
-    # Validate API key (only required for non-relay-client mode)
-    local api_key
-    api_key=$(jq -r '.openrouter_api_key // empty' "$config_file")
-    
-    if [[ "$is_relay_client" == "false" ]]; then
-        # API key is required for direct mode
-        if [[ -z "$api_key" ]]; then
-            log_error "Missing required field: .openrouter_api_key"
-            ((errors++))
-        elif [[ "$api_key" == "sk-or-v1-your-api-key-here" ]]; then
-            log_error "Please replace the placeholder API key with your actual OpenRouter API key"
-            ((errors++))
-        elif [[ ! "$api_key" =~ ^sk-or- ]]; then
-            log_warn "API key doesn't start with 'sk-or-' - are you sure this is an OpenRouter key?"
-        fi
-    else
-        # Relay client mode - API key is optional (can be empty)
-        if [[ -n "$api_key" && "$api_key" != "" && ! "$api_key" =~ ^sk-or- ]]; then
-            log_warn "API key provided but doesn't start with 'sk-or-' - are you sure this is an OpenRouter key?"
+    if [[ "$relay_enabled" == "true" ]]; then
+        if [[ "$relay_mode" == "client" ]]; then
+            log_info "Relay client mode - will connect to relay server"
+            
+            # Check relay port
+            local relay_port
+            relay_port=$(jq -r '.relay.port // empty' "$config_file")
+            if [[ -z "$relay_port" ]]; then
+                log_warn "relay.port not set, will use default: 8081"
+            fi
+        elif [[ "$relay_mode" == "server" ]]; then
+            log_info "Relay server mode - will serve API requests"
+            
+            # Check for GitHub OAuth token (optional - can be added via /auth/device)
+            local oauth_token
+            oauth_token=$(jq -r '.github_oauth_token // empty' "$config_file")
+            if [[ -z "$oauth_token" ]]; then
+                log_warn "github_oauth_token not set - authenticate via /auth/device endpoint"
+            fi
+        else
+            log_warn "relay.mode should be 'client' or 'server', got: $relay_mode"
         fi
     fi
 
-    # Validate optional preferences (set defaults if missing)
-    # Only warn about genius model if not using tier system
-    if [[ "$has_tier" == "false" ]]; then
-        local genius_model
-        genius_model=$(jq -r '.models.genius // empty' "$config_file")
-        if [[ -z "$genius_model" ]]; then
-            log_warn "models.genius not set, will use default: anthropic/claude-opus-4.5"
-        fi
-    fi
-    
-    local ultrawork_max
-    ultrawork_max=$(jq -r '.preferences.ultrawork_max_iterations // empty' "$config_file")
-    if [[ -z "$ultrawork_max" ]]; then
-        log_warn "preferences.ultrawork_max_iterations not set, will use default: 50"
-    fi
-
-    local turn_protection
-    turn_protection=$(jq -r '.preferences.dcp_turn_protection // empty' "$config_file")
-    if [[ -z "$turn_protection" ]]; then
-        log_warn "preferences.dcp_turn_protection not set, will use default: 2"
-    fi
-
-    local error_retention
-    error_retention=$(jq -r '.preferences.dcp_error_retention_turns // empty' "$config_file")
-    if [[ -z "$error_retention" ]]; then
-        log_warn "preferences.dcp_error_retention_turns not set, will use default: 4"
-    fi
-
-    local nudge_freq
-    nudge_freq=$(jq -r '.preferences.dcp_nudge_frequency // empty' "$config_file")
-    if [[ -z "$nudge_freq" ]]; then
-        log_warn "preferences.dcp_nudge_frequency not set, will use default: 10"
+    # Check for deprecated OpenRouter config
+    local openrouter_key
+    openrouter_key=$(jq -r '.openrouter_api_key // empty' "$config_file")
+    if [[ -n "$openrouter_key" && "$openrouter_key" != "" ]]; then
+        log_warn "openrouter_api_key is deprecated - Sovereign Agent now uses GitHub Copilot"
+        log_warn "Remove openrouter_api_key and use /auth/device to authenticate with GitHub Copilot"
     fi
 
     if [[ $errors -gt 0 ]]; then

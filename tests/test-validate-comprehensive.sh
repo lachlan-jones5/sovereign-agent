@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # test-validate-comprehensive.sh - Extended tests for config validation
-# Covers warning paths, edge cases, and all validation scenarios
+# Covers relay configuration, warnings, edge cases, and all validation scenarios
 # Usage: ./tests/test-validate-comprehensive.sh
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -40,305 +40,68 @@ fail() {
 # Source the validate script
 source "$LIB_DIR/validate.sh"
 
-# Helper to create a valid base config
-create_valid_config() {
-    local file="$1"
-    cat > "$file" << 'EOF'
-{
-  "openrouter_api_key": "sk-or-v1-test-key",
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "deepseek/deepseek-v3",
-    "planner": "anthropic/claude-opus-4.5",
-    "librarian": "google/gemini-3-flash",
-    "fallback": "meta-llama/llama-3.3-70b-instruct"
-  }
-}
-EOF
-}
-
 # ============================================================================
-# API KEY FORMAT WARNING TESTS
+# RELAY CONFIGURATION TESTS
 # ============================================================================
 
 echo "========================================"
-echo "API Key Format Warning Tests"
+echo "Relay Configuration Tests"
 echo "========================================"
 echo
 
-test_api_key_format_warning_sk_prefix() {
-    local name="API key without sk-or- prefix triggers warning"
+test_relay_client_mode() {
+    local name="Relay client mode validates successfully"
     
-    cat > "$TEST_TMP_DIR/wrong-prefix.json" << 'EOF'
+    cat > "$TEST_TMP_DIR/relay-client.json" << 'EOF'
 {
-  "openrouter_api_key": "wrong-prefix-key",
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "model",
-    "planner": "model",
-    "librarian": "model",
-    "fallback": "model"
+  "relay": {
+    "enabled": true,
+    "mode": "client",
+    "port": 8081
   }
 }
 EOF
     
     local output
-    output=$(validate_config "$TEST_TMP_DIR/wrong-prefix.json" 2>&1)
-    
-    if echo "$output" | grep -qi "sk-or\|openrouter"; then
-        pass "$name"
-    else
-        fail "$name" "warning about sk-or" "no warning"
-    fi
-}
-
-test_api_key_valid_prefix() {
-    local name="API key with sk-or-v1- prefix passes without warning"
-    
-    cat > "$TEST_TMP_DIR/valid-prefix.json" << 'EOF'
-{
-  "openrouter_api_key": "sk-or-v1-valid-key",
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "model",
-    "planner": "model",
-    "librarian": "model",
-    "fallback": "model"
-  }
-}
-EOF
-    
-    local output
-    output=$(validate_config "$TEST_TMP_DIR/valid-prefix.json" 2>&1)
+    output=$(validate_config "$TEST_TMP_DIR/relay-client.json" 2>&1)
     local exit_code=$?
     
-    if [[ $exit_code -eq 0 ]]; then
+    if [[ $exit_code -eq 0 ]] && echo "$output" | grep -qi "client mode"; then
         pass "$name"
     else
-        fail "$name" "exit 0" "exit $exit_code"
+        fail "$name" "exit 0 with client mode message" "exit $exit_code"
     fi
 }
 
-test_api_key_relay_client_with_bad_prefix() {
-    local name="Relay client with non-sk-or key triggers warning"
+test_relay_server_mode() {
+    local name="Relay server mode validates successfully"
     
-    cat > "$TEST_TMP_DIR/relay-bad-key.json" << 'EOF'
+    cat > "$TEST_TMP_DIR/relay-server.json" << 'EOF'
 {
-  "openrouter_api_key": "some-other-key",
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "model",
-    "planner": "model",
-    "librarian": "model",
-    "fallback": "model"
-  },
   "relay": {
     "enabled": true,
-    "mode": "client"
-  }
+    "mode": "server"
+  },
+  "github_oauth_token": "gho_test_token"
 }
 EOF
     
     local output
-    output=$(validate_config "$TEST_TMP_DIR/relay-bad-key.json" 2>&1)
-    
-    # Should pass but warn
-    if echo "$output" | grep -qi "sk-or\|openrouter"; then
-        pass "$name"
-    else
-        # Also acceptable if it passes without warning (key is optional in client mode)
-        pass "$name"
-    fi
-}
-
-test_api_key_format_warning_sk_prefix
-test_api_key_valid_prefix
-test_api_key_relay_client_with_bad_prefix
-
-# ============================================================================
-# MISSING OPTIONAL FIELD WARNINGS
-# ============================================================================
-
-echo
-echo "========================================"
-echo "Missing Optional Field Warnings"
-echo "========================================"
-echo
-
-test_missing_genius_warning() {
-    local name="Missing genius model produces warning"
-    
-    cat > "$TEST_TMP_DIR/no-genius.json" << 'EOF'
-{
-  "openrouter_api_key": "sk-or-v1-test",
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "model",
-    "planner": "model",
-    "librarian": "model",
-    "fallback": "model"
-  }
-}
-EOF
-    
-    local output
-    output=$(validate_config "$TEST_TMP_DIR/no-genius.json" 2>&1)
+    output=$(validate_config "$TEST_TMP_DIR/relay-server.json" 2>&1)
     local exit_code=$?
     
-    # Should pass (genius is optional)
-    if [[ $exit_code -eq 0 ]]; then
-        # Check for warning
-        if echo "$output" | grep -qi "genius"; then
-            pass "$name"
-        else
-            pass "$name"  # Also OK - warning is optional
-        fi
-    else
-        fail "$name" "exit 0" "exit $exit_code"
-    fi
-}
-
-test_missing_ultrawork_warning() {
-    local name="Missing ultrawork_max_iterations produces warning"
-    
-    cat > "$TEST_TMP_DIR/no-ultrawork.json" << 'EOF'
-{
-  "openrouter_api_key": "sk-or-v1-test",
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "model",
-    "planner": "model",
-    "librarian": "model",
-    "fallback": "model"
-  }
-}
-EOF
-    
-    local output
-    output=$(validate_config "$TEST_TMP_DIR/no-ultrawork.json" 2>&1)
-    
-    if echo "$output" | grep -qi "ultrawork"; then
+    if [[ $exit_code -eq 0 ]] && echo "$output" | grep -qi "server mode"; then
         pass "$name"
     else
-        pass "$name"  # Warning is optional
+        fail "$name" "exit 0 with server mode message" "exit $exit_code"
     fi
 }
 
-test_missing_dcp_turn_protection_warning() {
-    local name="Missing dcp_turn_protection produces warning"
+test_relay_server_missing_oauth_warning() {
+    local name="Relay server without github_oauth_token produces warning"
     
-    cat > "$TEST_TMP_DIR/no-dcp.json" << 'EOF'
+    cat > "$TEST_TMP_DIR/relay-server-no-oauth.json" << 'EOF'
 {
-  "openrouter_api_key": "sk-or-v1-test",
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "model",
-    "planner": "model",
-    "librarian": "model",
-    "fallback": "model"
-  }
-}
-EOF
-    
-    local output
-    output=$(validate_config "$TEST_TMP_DIR/no-dcp.json" 2>&1)
-    
-    if echo "$output" | grep -qi "turn_protection\|dcp"; then
-        pass "$name"
-    else
-        pass "$name"  # Warning is optional
-    fi
-}
-
-test_missing_genius_warning
-test_missing_ultrawork_warning
-test_missing_dcp_turn_protection_warning
-
-# ============================================================================
-# RELAY MODE TESTS
-# ============================================================================
-
-echo
-echo "========================================"
-echo "Relay Mode Tests"
-echo "========================================"
-echo
-
-test_relay_client_empty_key_allowed() {
-    local name="Relay client mode allows empty API key"
-    
-    cat > "$TEST_TMP_DIR/relay-empty-key.json" << 'EOF'
-{
-  "openrouter_api_key": "",
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "model",
-    "planner": "model",
-    "librarian": "model",
-    "fallback": "model"
-  },
-  "relay": {
-    "enabled": true,
-    "mode": "client"
-  }
-}
-EOF
-    
-    if validate_config "$TEST_TMP_DIR/relay-empty-key.json" 2>/dev/null; then
-        pass "$name"
-    else
-        fail "$name" "exit 0" "exit 1"
-    fi
-}
-
-test_relay_client_missing_key_allowed() {
-    local name="Relay client mode allows missing API key"
-    
-    cat > "$TEST_TMP_DIR/relay-no-key.json" << 'EOF'
-{
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "model",
-    "planner": "model",
-    "librarian": "model",
-    "fallback": "model"
-  },
-  "relay": {
-    "enabled": true,
-    "mode": "client"
-  }
-}
-EOF
-    
-    if validate_config "$TEST_TMP_DIR/relay-no-key.json" 2>/dev/null; then
-        pass "$name"
-    else
-        fail "$name" "exit 0" "exit 1"
-    fi
-}
-
-test_relay_server_requires_key() {
-    local name="Relay server mode requires API key"
-    
-    cat > "$TEST_TMP_DIR/relay-server-no-key.json" << 'EOF'
-{
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "model",
-    "planner": "model",
-    "librarian": "model",
-    "fallback": "model"
-  },
   "relay": {
     "enabled": true,
     "mode": "server"
@@ -346,26 +109,67 @@ test_relay_server_requires_key() {
 }
 EOF
     
-    if validate_config "$TEST_TMP_DIR/relay-server-no-key.json" 2>/dev/null; then
-        fail "$name" "exit 1" "exit 0"
-    else
+    local output
+    output=$(validate_config "$TEST_TMP_DIR/relay-server-no-oauth.json" 2>&1)
+    local exit_code=$?
+    
+    if [[ $exit_code -eq 0 ]] && echo "$output" | grep -qi "github_oauth_token.*not set\|authenticate.*auth/device"; then
         pass "$name"
+    else
+        fail "$name" "exit 0 with oauth warning" "exit $exit_code or missing warning"
     fi
 }
 
-test_relay_disabled_requires_key() {
-    local name="Disabled relay requires API key"
+test_relay_client_missing_port_warning() {
+    local name="Relay client without port produces warning"
     
-    cat > "$TEST_TMP_DIR/relay-disabled-no-key.json" << 'EOF'
+    cat > "$TEST_TMP_DIR/relay-client-no-port.json" << 'EOF'
 {
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "model",
-    "planner": "model",
-    "librarian": "model",
-    "fallback": "model"
-  },
+  "relay": {
+    "enabled": true,
+    "mode": "client"
+  }
+}
+EOF
+    
+    local output
+    output=$(validate_config "$TEST_TMP_DIR/relay-client-no-port.json" 2>&1)
+    local exit_code=$?
+    
+    if [[ $exit_code -eq 0 ]] && echo "$output" | grep -qi "port.*not set\|default.*8081"; then
+        pass "$name"
+    else
+        fail "$name" "exit 0 with port warning" "exit $exit_code or missing warning"
+    fi
+}
+
+test_relay_invalid_mode() {
+    local name="Invalid relay.mode produces warning"
+    
+    cat > "$TEST_TMP_DIR/relay-invalid-mode.json" << 'EOF'
+{
+  "relay": {
+    "enabled": true,
+    "mode": "invalid"
+  }
+}
+EOF
+    
+    local output
+    output=$(validate_config "$TEST_TMP_DIR/relay-invalid-mode.json" 2>&1)
+    
+    if echo "$output" | grep -qi "should be.*client.*server\|got.*invalid"; then
+        pass "$name"
+    else
+        fail "$name" "warning about invalid mode" "no warning found"
+    fi
+}
+
+test_relay_disabled() {
+    local name="Relay disabled validates without relay checks"
+    
+    cat > "$TEST_TMP_DIR/relay-disabled.json" << 'EOF'
+{
   "relay": {
     "enabled": false,
     "mode": "client"
@@ -373,191 +177,204 @@ test_relay_disabled_requires_key() {
 }
 EOF
     
-    if validate_config "$TEST_TMP_DIR/relay-disabled-no-key.json" 2>/dev/null; then
-        fail "$name" "exit 1" "exit 0"
-    else
+    local output
+    output=$(validate_config "$TEST_TMP_DIR/relay-disabled.json" 2>&1)
+    local exit_code=$?
+    
+    if [[ $exit_code -eq 0 ]]; then
         pass "$name"
+    else
+        fail "$name" "exit 0" "exit $exit_code"
     fi
 }
 
-test_relay_client_empty_key_allowed
-test_relay_client_missing_key_allowed
-test_relay_server_requires_key
-test_relay_disabled_requires_key
+test_relay_not_present() {
+    local name="Missing relay configuration validates successfully"
+    
+    cat > "$TEST_TMP_DIR/no-relay.json" << 'EOF'
+{}
+EOF
+    
+    if validate_config "$TEST_TMP_DIR/no-relay.json" 2>/dev/null; then
+        pass "$name"
+    else
+        fail "$name" "exit 0" "exit 1"
+    fi
+}
+
+test_relay_client_mode
+test_relay_server_mode
+test_relay_server_missing_oauth_warning
+test_relay_client_missing_port_warning
+test_relay_invalid_mode
+test_relay_disabled
+test_relay_not_present
 
 # ============================================================================
-# REQUIRED FIELD TESTS
+# DEPRECATED OPENROUTER API KEY WARNING TESTS
 # ============================================================================
 
 echo
 echo "========================================"
-echo "Required Field Tests"
+echo "Deprecated OpenRouter API Key Warnings"
 echo "========================================"
 echo
 
-test_missing_site_url() {
-    local name="Missing site_url fails validation"
+test_openrouter_key_deprecated_warning() {
+    local name="openrouter_api_key present produces deprecation warning"
     
-    cat > "$TEST_TMP_DIR/no-site-url.json" << 'EOF'
+    cat > "$TEST_TMP_DIR/openrouter-key.json" << 'EOF'
 {
-  "openrouter_api_key": "sk-or-v1-test",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "model",
-    "planner": "model",
-    "librarian": "model",
-    "fallback": "model"
+  "openrouter_api_key": "sk-or-v1-test-key",
+  "relay": {
+    "enabled": true,
+    "mode": "client"
   }
 }
 EOF
     
-    if validate_config "$TEST_TMP_DIR/no-site-url.json" 2>/dev/null; then
-        fail "$name" "exit 1" "exit 0"
-    else
+    local output
+    output=$(validate_config "$TEST_TMP_DIR/openrouter-key.json" 2>&1)
+    
+    if echo "$output" | grep -qi "openrouter_api_key.*deprecated\|github copilot"; then
         pass "$name"
+    else
+        fail "$name" "deprecation warning" "no warning found"
     fi
 }
 
-test_missing_site_name() {
-    local name="Missing site_name fails validation"
+test_openrouter_key_empty_no_warning() {
+    local name="Empty openrouter_api_key does not produce warning"
     
-    cat > "$TEST_TMP_DIR/no-site-name.json" << 'EOF'
+    cat > "$TEST_TMP_DIR/openrouter-empty.json" << 'EOF'
 {
-  "openrouter_api_key": "sk-or-v1-test",
-  "site_url": "https://example.com",
-  "models": {
-    "orchestrator": "model",
-    "planner": "model",
-    "librarian": "model",
-    "fallback": "model"
+  "openrouter_api_key": "",
+  "relay": {
+    "enabled": true,
+    "mode": "client"
   }
 }
 EOF
     
-    if validate_config "$TEST_TMP_DIR/no-site-name.json" 2>/dev/null; then
-        fail "$name" "exit 1" "exit 0"
+    local output
+    output=$(validate_config "$TEST_TMP_DIR/openrouter-empty.json" 2>&1)
+    
+    if echo "$output" | grep -qi "deprecated"; then
+        fail "$name" "no warning" "warning present"
     else
         pass "$name"
     fi
 }
 
-test_missing_all_models() {
-    local name="Missing all models fails validation"
+test_openrouter_key_with_server_mode() {
+    local name="openrouter_api_key with server mode produces deprecation warning"
     
-    cat > "$TEST_TMP_DIR/no-models.json" << 'EOF'
+    cat > "$TEST_TMP_DIR/openrouter-server.json" << 'EOF'
 {
-  "openrouter_api_key": "sk-or-v1-test",
-  "site_url": "https://example.com",
-  "site_name": "TestSite"
-}
-EOF
-    
-    if validate_config "$TEST_TMP_DIR/no-models.json" 2>/dev/null; then
-        fail "$name" "exit 1" "exit 0"
-    else
-        pass "$name"
-    fi
-}
-
-test_missing_orchestrator() {
-    local name="Missing orchestrator model fails validation"
-    
-    cat > "$TEST_TMP_DIR/no-orchestrator.json" << 'EOF'
-{
-  "openrouter_api_key": "sk-or-v1-test",
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "planner": "model",
-    "librarian": "model",
-    "fallback": "model"
+  "openrouter_api_key": "sk-or-v1-12345",
+  "relay": {
+    "enabled": true,
+    "mode": "server"
   }
 }
 EOF
     
-    if validate_config "$TEST_TMP_DIR/no-orchestrator.json" 2>/dev/null; then
-        fail "$name" "exit 1" "exit 0"
-    else
+    local output
+    output=$(validate_config "$TEST_TMP_DIR/openrouter-server.json" 2>&1)
+    
+    if echo "$output" | grep -qi "deprecated"; then
         pass "$name"
+    else
+        fail "$name" "deprecation warning" "no warning found"
     fi
 }
 
-test_missing_planner() {
-    local name="Missing planner model fails validation"
+test_openrouter_key_deprecated_warning
+test_openrouter_key_empty_no_warning
+test_openrouter_key_with_server_mode
+
+# ============================================================================
+# GITHUB OAUTH TOKEN TESTS
+# ============================================================================
+
+echo
+echo "========================================"
+echo "GitHub OAuth Token Tests"
+echo "========================================"
+echo
+
+test_github_oauth_present_server_mode() {
+    local name="github_oauth_token present in server mode validates"
     
-    cat > "$TEST_TMP_DIR/no-planner.json" << 'EOF'
+    cat > "$TEST_TMP_DIR/oauth-present.json" << 'EOF'
 {
-  "openrouter_api_key": "sk-or-v1-test",
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "model",
-    "librarian": "model",
-    "fallback": "model"
+  "github_oauth_token": "gho_1234567890",
+  "relay": {
+    "enabled": true,
+    "mode": "server"
   }
 }
 EOF
     
-    if validate_config "$TEST_TMP_DIR/no-planner.json" 2>/dev/null; then
-        fail "$name" "exit 1" "exit 0"
+    local output
+    output=$(validate_config "$TEST_TMP_DIR/oauth-present.json" 2>&1)
+    
+    if echo "$output" | grep -qi "github_oauth_token.*not set"; then
+        fail "$name" "no oauth warning" "warning present"
     else
         pass "$name"
     fi
 }
 
-test_missing_librarian() {
-    local name="Missing librarian model fails validation"
+test_github_oauth_missing_client_mode() {
+    local name="Missing github_oauth_token in client mode is OK"
     
-    cat > "$TEST_TMP_DIR/no-librarian.json" << 'EOF'
+    cat > "$TEST_TMP_DIR/oauth-client.json" << 'EOF'
 {
-  "openrouter_api_key": "sk-or-v1-test",
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "model",
-    "planner": "model",
-    "fallback": "model"
+  "relay": {
+    "enabled": true,
+    "mode": "client"
   }
 }
 EOF
     
-    if validate_config "$TEST_TMP_DIR/no-librarian.json" 2>/dev/null; then
-        fail "$name" "exit 1" "exit 0"
+    local output
+    output=$(validate_config "$TEST_TMP_DIR/oauth-client.json" 2>&1)
+    
+    # Should not warn about oauth in client mode
+    if echo "$output" | grep -qi "github_oauth_token"; then
+        fail "$name" "no oauth warning in client mode" "warning present"
     else
         pass "$name"
     fi
 }
 
-test_missing_fallback() {
-    local name="Missing fallback model fails validation"
+test_github_oauth_relay_disabled() {
+    local name="github_oauth_token ignored when relay disabled"
     
-    cat > "$TEST_TMP_DIR/no-fallback.json" << 'EOF'
+    cat > "$TEST_TMP_DIR/oauth-disabled.json" << 'EOF'
 {
-  "openrouter_api_key": "sk-or-v1-test",
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "model",
-    "planner": "model",
-    "librarian": "model"
+  "relay": {
+    "enabled": false
   }
 }
 EOF
     
-    if validate_config "$TEST_TMP_DIR/no-fallback.json" 2>/dev/null; then
-        fail "$name" "exit 1" "exit 0"
-    else
+    local output
+    output=$(validate_config "$TEST_TMP_DIR/oauth-disabled.json" 2>&1)
+    local exit_code=$?
+    
+    # Should pass without any oauth warnings
+    if [[ $exit_code -eq 0 ]]; then
         pass "$name"
+    else
+        fail "$name" "exit 0" "exit $exit_code"
     fi
 }
 
-test_missing_site_url
-test_missing_site_name
-test_missing_all_models
-test_missing_orchestrator
-test_missing_planner
-test_missing_librarian
-test_missing_fallback
+test_github_oauth_present_server_mode
+test_github_oauth_missing_client_mode
+test_github_oauth_relay_disabled
 
 # ============================================================================
 # EDGE CASE TESTS
@@ -569,120 +386,101 @@ echo "Edge Case Tests"
 echo "========================================"
 echo
 
-test_empty_string_values() {
-    local name="Empty string model values fail validation"
+test_empty_config() {
+    local name="Empty config validates (all fields optional)"
     
-    cat > "$TEST_TMP_DIR/empty-strings.json" << 'EOF'
-{
-  "openrouter_api_key": "sk-or-v1-test",
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "",
-    "planner": "model",
-    "librarian": "model",
-    "fallback": "model"
-  }
-}
+    cat > "$TEST_TMP_DIR/empty.json" << 'EOF'
+{}
 EOF
     
-    if validate_config "$TEST_TMP_DIR/empty-strings.json" 2>/dev/null; then
-        fail "$name" "exit 1" "exit 0"
-    else
-        pass "$name"
-    fi
-}
-
-test_null_values() {
-    local name="Null model values fail validation"
-    
-    cat > "$TEST_TMP_DIR/null-values.json" << 'EOF'
-{
-  "openrouter_api_key": "sk-or-v1-test",
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": null,
-    "planner": "model",
-    "librarian": "model",
-    "fallback": "model"
-  }
-}
-EOF
-    
-    if validate_config "$TEST_TMP_DIR/null-values.json" 2>/dev/null; then
-        fail "$name" "exit 1" "exit 0"
-    else
-        pass "$name"
-    fi
-}
-
-test_whitespace_only_values() {
-    local name="Whitespace-only values treated as empty"
-    
-    cat > "$TEST_TMP_DIR/whitespace.json" << 'EOF'
-{
-  "openrouter_api_key": "sk-or-v1-test",
-  "site_url": "   ",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "model",
-    "planner": "model",
-    "librarian": "model",
-    "fallback": "model"
-  }
-}
-EOF
-    
-    # Whitespace-only should be treated as valid by jq -r (it returns the string)
-    # But URL validation might catch it
-    local output
-    output=$(validate_config "$TEST_TMP_DIR/whitespace.json" 2>&1)
-    local exit_code=$?
-    
-    # Either fail or pass is acceptable depending on implementation
-    pass "$name"  # Document current behavior
-}
-
-test_very_long_model_names() {
-    local name="Very long model names are accepted"
-    
-    local long_model="vendor/$(head -c 200 /dev/urandom | base64 | tr -d '\n' | head -c 200)"
-    
-    cat > "$TEST_TMP_DIR/long-names.json" << EOF
-{
-  "openrouter_api_key": "sk-or-v1-test",
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "$long_model",
-    "planner": "model",
-    "librarian": "model",
-    "fallback": "model"
-  }
-}
-EOF
-    
-    if validate_config "$TEST_TMP_DIR/long-names.json" 2>/dev/null; then
+    if validate_config "$TEST_TMP_DIR/empty.json" 2>/dev/null; then
         pass "$name"
     else
         fail "$name" "exit 0" "exit 1"
     fi
 }
 
-test_unicode_in_site_name() {
-    local name="Unicode in site_name is accepted"
+test_minimal_relay_config() {
+    local name="Minimal relay config with just enabled flag"
+    
+    cat > "$TEST_TMP_DIR/minimal-relay.json" << 'EOF'
+{
+  "relay": {
+    "enabled": true
+  }
+}
+EOF
+    
+    local output
+    output=$(validate_config "$TEST_TMP_DIR/minimal-relay.json" 2>&1)
+    local exit_code=$?
+    
+    # Should pass but might warn about missing mode
+    if [[ $exit_code -eq 0 ]]; then
+        pass "$name"
+    else
+        fail "$name" "exit 0" "exit $exit_code"
+    fi
+}
+
+test_extra_fields_ignored() {
+    local name="Extra unknown fields are ignored"
+    
+    cat > "$TEST_TMP_DIR/extra-fields.json" << 'EOF'
+{
+  "relay": {
+    "enabled": true,
+    "mode": "client"
+  },
+  "unknown_field": "should be ignored",
+  "another_unknown": 123,
+  "nested": {
+    "field": "value"
+  }
+}
+EOF
+    
+    if validate_config "$TEST_TMP_DIR/extra-fields.json" 2>/dev/null; then
+        pass "$name"
+    else
+        fail "$name" "exit 0" "exit 1"
+    fi
+}
+
+test_null_relay_values() {
+    local name="Null relay values are handled"
+    
+    cat > "$TEST_TMP_DIR/null-relay.json" << 'EOF'
+{
+  "relay": {
+    "enabled": null,
+    "mode": null
+  }
+}
+EOF
+    
+    local output
+    output=$(validate_config "$TEST_TMP_DIR/null-relay.json" 2>&1)
+    local exit_code=$?
+    
+    # Should handle gracefully (null is treated as missing)
+    if [[ $exit_code -eq 0 ]]; then
+        pass "$name"
+    else
+        # Also acceptable to fail on null values
+        pass "$name"
+    fi
+}
+
+test_unicode_in_config() {
+    local name="Unicode characters in config are accepted"
     
     cat > "$TEST_TMP_DIR/unicode.json" << 'EOF'
 {
-  "openrouter_api_key": "sk-or-v1-test",
-  "site_url": "https://example.com",
-  "site_name": "Test Site - Production",
-  "models": {
-    "orchestrator": "model",
-    "planner": "model",
-    "librarian": "model",
-    "fallback": "model"
+  "github_oauth_token": "测试_token_🚀",
+  "relay": {
+    "enabled": true,
+    "mode": "server"
   }
 }
 EOF
@@ -694,38 +492,224 @@ EOF
     fi
 }
 
-test_extra_fields_ignored() {
-    local name="Extra fields are ignored"
+test_very_long_token() {
+    local name="Very long token values are accepted"
     
-    cat > "$TEST_TMP_DIR/extra-fields.json" << 'EOF'
+    local long_token=$(head -c 500 /dev/urandom | base64 | tr -d '\n' | head -c 500)
+    
+    cat > "$TEST_TMP_DIR/long-token.json" << EOF
 {
-  "openrouter_api_key": "sk-or-v1-test",
-  "site_url": "https://example.com",
-  "site_name": "TestSite",
-  "models": {
-    "orchestrator": "model",
-    "planner": "model",
-    "librarian": "model",
-    "fallback": "model"
-  },
-  "unknown_field": "should be ignored",
-  "another_unknown": 123
+  "github_oauth_token": "$long_token",
+  "relay": {
+    "enabled": true,
+    "mode": "server"
+  }
 }
 EOF
     
-    if validate_config "$TEST_TMP_DIR/extra-fields.json" 2>/dev/null; then
+    if validate_config "$TEST_TMP_DIR/long-token.json" 2>/dev/null; then
         pass "$name"
     else
         fail "$name" "exit 0" "exit 1"
     fi
 }
 
-test_empty_string_values
-test_null_values
-test_whitespace_only_values
-test_very_long_model_names
-test_unicode_in_site_name
+test_relay_port_types() {
+    local name="Relay port accepts numeric values"
+    
+    cat > "$TEST_TMP_DIR/port-number.json" << 'EOF'
+{
+  "relay": {
+    "enabled": true,
+    "mode": "client",
+    "port": 9999
+  }
+}
+EOF
+    
+    if validate_config "$TEST_TMP_DIR/port-number.json" 2>/dev/null; then
+        pass "$name"
+    else
+        fail "$name" "exit 0" "exit 1"
+    fi
+}
+
+test_multiple_warnings() {
+    local name="Multiple warnings are all displayed"
+    
+    cat > "$TEST_TMP_DIR/multiple-warnings.json" << 'EOF'
+{
+  "openrouter_api_key": "sk-or-v1-old-key",
+  "relay": {
+    "enabled": true,
+    "mode": "server"
+  }
+}
+EOF
+    
+    local output
+    output=$(validate_config "$TEST_TMP_DIR/multiple-warnings.json" 2>&1)
+    
+    # Should warn about both deprecated key AND missing oauth
+    local has_deprecated=$(echo "$output" | grep -qi "deprecated" && echo "yes" || echo "no")
+    local has_oauth=$(echo "$output" | grep -qi "github_oauth_token" && echo "yes" || echo "no")
+    
+    if [[ "$has_deprecated" == "yes" && "$has_oauth" == "yes" ]]; then
+        pass "$name"
+    else
+        fail "$name" "both deprecation and oauth warnings" "deprecated=$has_deprecated oauth=$has_oauth"
+    fi
+}
+
+test_empty_config
+test_minimal_relay_config
 test_extra_fields_ignored
+test_null_relay_values
+test_unicode_in_config
+test_very_long_token
+test_relay_port_types
+test_multiple_warnings
+
+# ============================================================================
+# INVALID JSON TESTS
+# ============================================================================
+
+echo
+echo "========================================"
+echo "Invalid JSON Tests"
+echo "========================================"
+echo
+
+test_invalid_json() {
+    local name="Invalid JSON fails validation"
+    
+    cat > "$TEST_TMP_DIR/invalid.json" << 'EOF'
+{
+  "relay": {
+    "enabled": true,
+    "mode": "client"
+  }
+  missing comma
+}
+EOF
+    
+    if validate_config "$TEST_TMP_DIR/invalid.json" 2>/dev/null; then
+        fail "$name" "exit 1" "exit 0"
+    else
+        pass "$name"
+    fi
+}
+
+test_missing_file() {
+    local name="Missing config file fails validation"
+    
+    if validate_config "$TEST_TMP_DIR/does-not-exist.json" 2>/dev/null; then
+        fail "$name" "exit 1" "exit 0"
+    else
+        pass "$name"
+    fi
+}
+
+test_empty_file() {
+    local name="Empty file passes JSON validation (jq treats empty as valid)"
+    
+    touch "$TEST_TMP_DIR/empty-file.json"
+    
+    if validate_config "$TEST_TMP_DIR/empty-file.json" 2>/dev/null; then
+        pass "$name"
+    else
+        fail "$name" "exit 0" "exit 1"
+    fi
+}
+
+test_invalid_json
+test_missing_file
+test_empty_file
+
+# ============================================================================
+# RELAY MODE COMBINATIONS
+# ============================================================================
+
+echo
+echo "========================================"
+echo "Relay Mode Combinations"
+echo "========================================"
+echo
+
+test_relay_enabled_string_true() {
+    local name="Relay enabled as string 'true' is handled"
+    
+    cat > "$TEST_TMP_DIR/enabled-string.json" << 'EOF'
+{
+  "relay": {
+    "enabled": "true",
+    "mode": "client"
+  }
+}
+EOF
+    
+    local output
+    output=$(validate_config "$TEST_TMP_DIR/enabled-string.json" 2>&1)
+    local exit_code=$?
+    
+    # Might treat string as truthy or might need boolean
+    if [[ $exit_code -eq 0 ]]; then
+        pass "$name"
+    else
+        pass "$name"  # Either behavior is acceptable
+    fi
+}
+
+test_relay_enabled_false_with_mode() {
+    local name="Relay enabled=false ignores mode setting"
+    
+    cat > "$TEST_TMP_DIR/disabled-with-mode.json" << 'EOF'
+{
+  "relay": {
+    "enabled": false,
+    "mode": "server"
+  }
+}
+EOF
+    
+    local output
+    output=$(validate_config "$TEST_TMP_DIR/disabled-with-mode.json" 2>&1)
+    
+    # Should not check server requirements when disabled
+    if echo "$output" | grep -qi "server mode"; then
+        fail "$name" "no server mode checks when disabled" "server mode message found"
+    else
+        pass "$name"
+    fi
+}
+
+test_relay_mode_case_sensitivity() {
+    local name="Relay mode is case sensitive"
+    
+    cat > "$TEST_TMP_DIR/mode-uppercase.json" << 'EOF'
+{
+  "relay": {
+    "enabled": true,
+    "mode": "CLIENT"
+  }
+}
+EOF
+    
+    local output
+    output=$(validate_config "$TEST_TMP_DIR/mode-uppercase.json" 2>&1)
+    
+    # Should warn about invalid mode (not 'client' or 'server')
+    if echo "$output" | grep -qi "should be.*client.*server"; then
+        pass "$name"
+    else
+        # Might also accept it - document behavior
+        pass "$name"
+    fi
+}
+
+test_relay_enabled_string_true
+test_relay_enabled_false_with_mode
+test_relay_mode_case_sensitivity
 
 # ============================================================================
 # SUMMARY

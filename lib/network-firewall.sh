@@ -3,7 +3,7 @@
 #
 # Implements the "Iron Box" network isolation from the red team analysis:
 # - Blocks private LAN ranges (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16)
-# - Only allows traffic to OpenRouter API and essential package registries
+# - Only allows traffic to GitHub Copilot API and essential package registries
 # - Prevents SSRF attacks against local infrastructure
 #
 # Usage:
@@ -16,8 +16,8 @@ set -e
 
 # Allowed hosts (DNS names and IPs)
 ALLOWED_HOSTS=(
-    # OpenRouter API
-    "openrouter.ai"
+    # GitHub Copilot API
+    "api.githubcopilot.com"
     
     # Package registries
     "registry.npmjs.org"

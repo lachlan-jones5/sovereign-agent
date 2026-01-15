@@ -1,291 +1,176 @@
-# Model Selection Guide
+# GitHub Copilot Model Guide
 
-This document provides a comprehensive analysis of available models on OpenRouter and recommendations for each agent role in Sovereign Agent.
+This document describes the models available through GitHub Copilot API and their premium request multipliers.
 
-> **IMPORTANT: Deprecated Models**
-> 
-> **Never use `claude-opus-4` or `claude-sonnet-4`** - always use `claude-opus-4.5` or `claude-sonnet-4.5` instead.
-> 
-> The 4.5 versions are:
-> - **Cheaper** (same or lower price)
-> - **Better** (newer, more capable)
-> - **Recommended by Anthropic**
-> 
-> All defaults and examples in this repo use the 4.5 versions.
+## Cost Model
 
-## Current Default Models
+GitHub Copilot uses a **premium request** system instead of per-token billing:
 
-| Role | Model | Price ($/1M tokens) | Context | Usage |
-|------|-------|---------------------|---------|-------|
-| **Orchestrator** | `deepseek/deepseek-v3.2` | $0.25 / $0.38 | 163k | Sisyphus, Frontend UI/UX |
-| **Planner** | `deepseek/deepseek-r1-0528` | $0.45 / $2.15 | 131k | Oracle, Metis, Momus, Prometheus |
-| **Librarian** | `google/gemini-3-flash-preview` | $0.50 / $3.00 | 1M | Explore, Document-Writer, Multimodal |
-| **Genius** | `anthropic/claude-opus-4.5` | $5.00 / $25.00 | 200k | Escape hatch for hard problems |
-| **Fallback** | `meta-llama/llama-4-maverick` | $0.15 / $0.60 | 1M | Unknown/unmapped agents |
+| Plan | Monthly Cost | Premium Requests |
+|------|--------------|------------------|
+| **Copilot Pro** | $10/month | 300/month |
+| **Copilot Pro+** | $39/month | 1,500/month |
 
-## Orchestrator Role
+Premium requests are consumed based on model multipliers. Free models (0x) don't consume any premium requests.
 
-Primary agents that coordinate work and can delegate to other agents.
+## Available Models
 
-**Agents:** Sisyphus, Frontend UI/UX Engineer
+### Free Models (0x multiplier)
 
-### Recommended Options
+These models are unlimited and don't consume premium requests:
 
-| Model | Price (in/out) | Context | Best For |
-|-------|----------------|---------|----------|
-| `deepseek/deepseek-v3.2` ⭐ | $0.25/$0.38 | 163k | Default - best value for coding |
-| `mistralai/mistral-small-3.2-24b-instruct` | $0.06/$0.18 | 131k | Budget - 75% cheaper |
-| `openai/gpt-4.1-nano` | $0.10/$0.40 | 1M | Large context - 1M tokens |
-| `openai/gpt-4.1-mini` | $0.40/$1.60 | 1M | Quality + large context |
-| `qwen/qwen3-32b` | $0.08/$0.24 | 40k | Ultra budget |
+| Model | Context | Best For |
+|-------|---------|----------|
+| `gpt-5-mini` | 200k | General coding, fast responses |
+| `gpt-4.1` | 1M | Large context tasks |
+| `gpt-4o` | 128k | Balanced performance |
 
-### Pros/Cons
+### Budget Models (0.25-0.33x multiplier)
 
-**deepseek/deepseek-v3.2** (Default)
-- ✅ Excellent coding ability
-- ✅ Fast inference
-- ✅ Good value
-- ❌ No vision/multimodal
+Very cost-effective for most tasks:
 
-**mistralai/mistral-small-3.2-24b-instruct** (Budget)
-- ✅ 75% cheaper than default
-- ✅ Good general capability
-- ❌ May struggle with complex orchestration
+| Model | Multiplier | Context | Best For |
+|-------|------------|---------|----------|
+| `claude-haiku-4.5` | 0.25x | 200k | Fast, cheap Claude |
+| `grok-code-fast-1` | 0.25x | 128k | Code-focused tasks |
+| `gemini-3-flash-preview` | 0.33x | 1M | Large context, multimodal |
 
-**openai/gpt-4.1-nano** (Large Context)
-- ✅ 1M token context
-- ✅ OpenAI quality
-- ❌ 60% more expensive output
+### Standard Models (1x multiplier)
 
-## Planner Role
+One premium request per API call:
 
-Reasoning and advisory agents that analyze problems and create plans.
+| Model | Context | Best For |
+|-------|---------|----------|
+| `claude-sonnet-4.5` | 1M | Primary coding agent |
+| `gpt-5` | 200k | OpenAI flagship |
+| `gpt-5.1` | 200k | Latest GPT iteration |
+| `gpt-5.2` | 200k | Newest GPT model |
+| `o3` | 200k | OpenAI reasoning |
+| `o3-mini` | 200k | Efficient reasoning |
+| `o4-mini` | 200k | Latest reasoning |
+| `gemini-3-pro-preview` | 1M | Google flagship |
+| `grok-3` | 131k | xAI flagship |
 
-**Agents:** Oracle, Metis, Momus, Prometheus
+### Premium Models (3x multiplier)
 
-### Recommended Options
+Best quality, highest cost:
 
-| Model | Price (in/out) | Context | Best For |
-|-------|----------------|---------|----------|
-| `deepseek/deepseek-r1-0528` ⭐ | $0.45/$2.15 | 131k | Default - best reasoning |
-| `deepseek/deepseek-r1-distill-llama-70b` | $0.03/$0.11 | 131k | Budget - 93% cheaper |
-| `qwen/qwen3-235b-a22b-thinking-2507` | $0.11/$0.60 | 262k | Balance - larger context |
-| `openai/o4-mini` | $1.10/$4.40 | 200k | Premium - OpenAI reasoning |
-| `microsoft/phi-4-reasoning-plus` | $0.07/$0.35 | 32k | Ultra budget |
+| Model | Multiplier | Context | Best For |
+|-------|------------|---------|----------|
+| `claude-opus-4.5` | 3x | 200k | Complex problems, escape hatch |
 
-### Pros/Cons
+## Deprecated Models
 
-**deepseek/deepseek-r1-0528** (Default)
-- ✅ Best-in-class reasoning
-- ✅ Extended thinking capability
-- ❌ Output tokens expensive at $2.15/1M
+The following models are **deprecated** and excluded from the relay:
 
-**deepseek/deepseek-r1-distill-llama-70b** (Budget)
-- ✅ 93% cheaper than full R1
-- ✅ Retains most reasoning capability
-- ❌ Distilled model, may miss edge cases
+- `claude-sonnet-4` - Use `claude-sonnet-4.5` instead
+- `claude-opus-4` - Use `claude-opus-4.5` instead
+- `claude-opus-41` - Use `claude-opus-4.5` instead
+- `gemini-2.5-pro` - Use `gemini-3-pro-preview` instead
 
-**openai/o4-mini** (Premium)
-- ✅ Latest OpenAI reasoning
-- ✅ Very strong on complex logic
-- ❌ 2.5x more expensive than default
+## Cost Comparison
 
-## Librarian Role
+### Pro Plan ($10/month, 300 requests)
 
-Research and exploration agents that gather information.
+| Usage Pattern | Requests/day | Premium Exhaustion |
+|---------------|--------------|-------------------|
+| Heavy (claude-opus-4.5) | 3-4 | ~1 week |
+| Moderate (claude-sonnet-4.5) | 10 | 30 days |
+| Light (free models) | Unlimited | Never |
 
-**Agents:** Explore, Document-Writer, Multimodal-Looker
+### Pro+ Plan ($39/month, 1,500 requests)
 
-### Recommended Options
+| Usage Pattern | Requests/day | Premium Exhaustion |
+|---------------|--------------|-------------------|
+| Heavy (claude-opus-4.5) | 15-20 | 30 days |
+| Moderate (claude-sonnet-4.5) | 50 | 30 days |
+| Light (free models) | Unlimited | Never |
 
-| Model | Price (in/out) | Context | Best For |
-|-------|----------------|---------|----------|
-| `google/gemini-3-flash-preview` ⭐ | $0.50/$3.00 | 1M | Default - best multimodal |
-| `google/gemini-2.5-flash-lite` | $0.10/$0.40 | 1M | Budget - 80% cheaper |
-| `google/gemini-2.0-flash-lite-001` | $0.075/$0.30 | 1M | Ultra budget - 85% cheaper |
-| `qwen/qwen-turbo` | $0.05/$0.20 | 1M | Cheapest 1M context |
-| `openai/gpt-4.1-nano` | $0.10/$0.40 | 1M | OpenAI alternative |
+## Recommended Configurations
 
-### Pros/Cons
+### Budget Setup (Maximize Free Models)
 
-**google/gemini-3-flash-preview** (Default)
-- ✅ Excellent multimodal (images, video)
-- ✅ 1M token context
-- ❌ Output expensive at $3.00/1M
+Use free models for most work, save premium for complex tasks:
 
-**google/gemini-2.5-flash-lite** (Budget)
-- ✅ 80% cheaper
-- ✅ Same 1M context
-- ❌ May be less capable for complex analysis
-
-**qwen/qwen-turbo** (Ultra Budget)
-- ✅ 90% cheaper than default
-- ✅ 1M token context
-- ❌ Less capable overall
-
-## Genius Role
-
-Escape hatch for hard problems - invoke with `@Genius`.
-
-**Agents:** Genius
-
-> **Note:** Claude Sonnet 4 and Claude Opus 4 have been deprecated in favor of their 4.5 versions. Both 4.5 versions are cheaper and more capable. Always prefer `claude-sonnet-4.5` over `claude-sonnet-4` and `claude-opus-4.5` over `claude-opus-4`.
-
-### Recommended Options
-
-| Model | Price (in/out) | Context | Best For |
-|-------|----------------|---------|----------|
-| `anthropic/claude-opus-4.5` ⭐ | $5.00/$25.00 | 200k | Default - best overall |
-| `anthropic/claude-sonnet-4.5` | $3.00/$15.00 | 1M | Balanced - 40% cheaper |
-| `google/gemini-2.5-pro` | $1.25/$10.00 | 1M | Value - 75% cheaper |
-| `openai/gpt-5.1` | $1.25/$10.00 | 400k | OpenAI alternative |
-| `openai/o3` | $2.00/$8.00 | 200k | Best reasoning |
-
-### Pros/Cons
-
-**anthropic/claude-opus-4.5** (Default)
-- ✅ Best Anthropic model
-- ✅ Exceptional at complex coding
-- ✅ Excellent instruction following
-- ❌ Most expensive option
-
-**anthropic/claude-sonnet-4.5** (Balanced)
-- ✅ 40% cheaper than Opus
-- ✅ 1M token context (5x larger)
-- ❌ Slightly less capable on edge cases
-
-**google/gemini-2.5-pro** (Value)
-- ✅ 75% cheaper than Opus
-- ✅ 1M token context
-- ❌ Different style, may need prompt adjustment
-
-**openai/o3** (Reasoning)
-- ✅ Best for complex logical problems
-- ✅ 60% cheaper than Opus
-- ❌ Overkill for simple tasks
-
-## Fallback Role
-
-Used for unknown or unmapped agents.
-
-**Agents:** Any agent not in AGENT_ROLE_MAP
-
-### Recommended Options
-
-| Model | Price (in/out) | Context | Best For |
-|-------|----------------|---------|----------|
-| `meta-llama/llama-4-maverick` ⭐ | $0.15/$0.60 | 1M | Default - good all-around |
-| `meta-llama/llama-4-scout` | $0.08/$0.30 | 327k | Budget - 47% cheaper |
-| `meta-llama/llama-3.3-70b-instruct` | $0.10/$0.32 | 131k | Proven - stable |
-| `mistralai/mistral-small-3.1-24b-instruct` | $0.03/$0.11 | 131k | Ultra budget - 80% cheaper |
-
-## Model Presets
-
-### Budget Preset (Maximum Savings)
-
-```json
-{
-  "models": {
-    "orchestrator": "mistralai/mistral-small-3.2-24b-instruct",
-    "planner": "deepseek/deepseek-r1-distill-llama-70b",
-    "librarian": "google/gemini-2.0-flash-lite-001",
-    "genius": "google/gemini-2.5-pro",
-    "fallback": "mistralai/mistral-small-3.1-24b-instruct"
-  }
-}
+```
+Primary: gpt-5-mini (0x)
+Backup: claude-haiku-4.5 (0.25x)
+Escape: claude-sonnet-4.5 (1x)
 ```
 
-**Estimated monthly cost:** $5-15 (moderate usage)
-**Savings vs default:** 75-85%
+**Premium usage:** ~50-100/month
 
-### Balanced Preset (Good Value)
+### Balanced Setup
 
-```json
-{
-  "models": {
-    "orchestrator": "deepseek/deepseek-v3.2",
-    "planner": "deepseek/deepseek-r1-distill-llama-70b",
-    "librarian": "google/gemini-2.5-flash-lite",
-    "genius": "anthropic/claude-sonnet-4.5",
-    "fallback": "meta-llama/llama-4-scout"
-  }
-}
+Mix of quality and cost:
+
+```
+Primary: claude-sonnet-4.5 (1x)
+Fast: gpt-5-mini (0x)
+Large context: gpt-4.1 (0x)
+Escape: claude-opus-4.5 (3x)
 ```
 
-**Estimated monthly cost:** $15-30 (moderate usage)
-**Savings vs default:** 50-60%
+**Premium usage:** ~300-500/month (Pro+ recommended)
 
-### Premium Preset (Best Quality)
+### Quality Setup
 
-```json
-{
-  "models": {
-    "orchestrator": "openai/gpt-4.1-mini",
-    "planner": "openai/o4-mini",
-    "librarian": "google/gemini-3-flash-preview",
-    "genius": "anthropic/claude-opus-4.5",
-    "fallback": "meta-llama/llama-4-maverick"
-  }
-}
+Best models for all tasks:
+
+```
+Primary: claude-sonnet-4.5 (1x)
+Reasoning: o3 (1x)
+Escape: claude-opus-4.5 (3x)
 ```
 
-**Estimated monthly cost:** $50-100 (moderate usage)
+**Premium usage:** ~500-1000/month (Pro+ required)
 
-## Reasoning Models Comparison
+## Comparison: Copilot vs OpenRouter
 
-For planning tasks that require extended thinking:
+| Feature | GitHub Copilot | OpenRouter |
+|---------|----------------|------------|
+| **Pricing** | $10-39/month flat | Per-token |
+| **Free models** | Yes (gpt-5-mini, gpt-4.1) | Limited |
+| **Claude access** | All versions | All versions |
+| **Premium billing** | Request-based | Token-based |
+| **Best for** | Heavy users | Light/sporadic use |
 
-| Model | Price (in/out) | Context | Notes |
-|-------|----------------|---------|-------|
-| `deepseek/deepseek-r1-0528` | $0.45/$2.15 | 131k | Best value reasoning |
-| `deepseek/deepseek-r1-distill-llama-70b` | $0.03/$0.11 | 131k | 93% cheaper, distilled |
-| `openai/o3-mini` | $1.10/$4.40 | 200k | OpenAI reasoning |
-| `openai/o4-mini` | $1.10/$4.40 | 200k | Latest OpenAI |
-| `qwen/qwen3-235b-a22b-thinking-2507` | $0.11/$0.60 | 262k | Good value, large |
-| `anthropic/claude-3.7-sonnet:thinking` | $3.00/$15.00 | 200k | Claude with thinking |
+### Break-even Analysis
 
-## Large Context Models (1M+ tokens)
+Copilot Pro ($10/month) is cheaper than OpenRouter if you use:
+- More than ~$10/month on OpenRouter
+- Or more than ~500k tokens/month of Claude Sonnet
 
-For tasks requiring massive context:
+Copilot Pro+ ($39/month) is cheaper if you use:
+- More than ~$39/month on OpenRouter
+- Or heavy premium model usage (1000+ requests/month)
 
-| Model | Price (in/out) | Context | Notes |
-|-------|----------------|---------|-------|
-| `google/gemini-3-flash-preview` | $0.50/$3.00 | 1M | Multimodal |
-| `google/gemini-2.5-flash-lite` | $0.10/$0.40 | 1M | Budget option |
-| `openai/gpt-4.1-nano` | $0.10/$0.40 | 1M | OpenAI |
-| `openai/gpt-4.1-mini` | $0.40/$1.60 | 1M | Better quality |
-| `meta-llama/llama-4-maverick` | $0.15/$0.60 | 1M | Open source |
-| `qwen/qwen-turbo` | $0.05/$0.20 | 1M | Cheapest |
+## Monitoring Usage
 
-## Configuration
-
-Set models in `config.json`:
-
-```json
-{
-  "models": {
-    "orchestrator": "deepseek/deepseek-v3.2",
-    "planner": "deepseek/deepseek-r1-0528",
-    "librarian": "google/gemini-3-flash-preview",
-    "genius": "anthropic/claude-opus-4.5",
-    "fallback": "meta-llama/llama-4-maverick"
-  }
-}
-```
-
-## Updating This Document
-
-To refresh model data from OpenRouter API:
+Check your premium request usage:
 
 ```bash
-# List all models with pricing
-curl -s "https://openrouter.ai/api/v1/models" | jq -r '
-.data | sort_by(.pricing.prompt | tonumber) | .[] |
-"\(.id)|\(.context_length)|\(.pricing.prompt)|\(.pricing.completion)"
-'
+curl http://localhost:8080/stats | jq
 ```
 
----
+Response:
+```json
+{
+  "uptime": 3600,
+  "requests": {
+    "total": 150,
+    "success": 148,
+    "error": 2
+  },
+  "premiumRequests": {
+    "used": 87.5,
+    "limit": 300
+  }
+}
+```
 
-*Last updated: January 2026*
-*Data source: OpenRouter API*
+## See Also
+
+- [Architecture](ARCHITECTURE.md) - System overview
+- [Relay Setup](RELAY-SETUP.md) - Relay configuration
+- [Troubleshooting](TROUBLESHOOTING.md) - Common issues

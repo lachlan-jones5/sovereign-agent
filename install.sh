@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # install.sh - Sovereign Agent Installer
-# Sets up the OpenCode with OpenAgents orchestration
+# Sets up OpenCode with Sovereign Relay (GitHub Copilot backend)
 
 set -e
 
@@ -45,7 +45,7 @@ print_banner() {
     echo ' |____/ \___/ \_/ \___|_|  \___|_|\__, |_| |_/_/   \_\__, |\___|_| |_|\__|'
     echo '                                  |___/             |___/                 '
     echo -e "${NC}"
-    echo -e "${BOLD}  OpenAgents Pipeline Installer${NC}"
+    echo -e "${BOLD}  GitHub Copilot Relay${NC}"
     echo -e "  Privacy-compliant agentic software engineering"
     echo
 }
@@ -54,31 +54,16 @@ usage() {
     echo "Usage: $0 [OPTIONS]"
     echo
     echo "Options:"
-    echo "  -c, --config FILE    Path to config.json (default: ./config.json)"
-    echo "  -d, --dest DIR       OpenCode config directory (default: ~/.config/opencode)"
     echo "  -s, --skip-deps      Skip dependency installation"
     echo "  -h, --help           Show this help message"
-    echo
-    echo "Example:"
-    echo "  $0 --config my-config.json"
     echo
 }
 
 # Parse command line arguments
-CONFIG_FILE="$SCRIPT_DIR/config.json"
-OPENCODE_CONFIG_DIR="$HOME/.config/opencode"
 SKIP_DEPS=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        -c|--config)
-            CONFIG_FILE="$2"
-            shift 2
-            ;;
-        -d|--dest)
-            OPENCODE_CONFIG_DIR="$2"
-            shift 2
-            ;;
         -s|--skip-deps)
             SKIP_DEPS=true
             shift
@@ -94,11 +79,6 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
-
-# Make config path absolute
-if [[ ! "$CONFIG_FILE" = /* ]]; then
-    CONFIG_FILE="$SCRIPT_DIR/$CONFIG_FILE"
-fi
 
 check_submodules() {
     # Skip if not a git repo (e.g., when installed from bundle)
@@ -118,69 +98,119 @@ check_submodules() {
     fi
 }
 
+install_opencode() {
+    log_info "Building and installing OpenCode..."
+    
+    cd "$VENDOR_DIR/opencode"
+    
+    # Install dependencies
+    if ! bun install --frozen-lockfile 2>/dev/null; then
+        log_warn "bun install --frozen-lockfile failed, trying without frozen lockfile"
+        bun install
+    fi
+    
+    # Build and link
+    bun run build 2>/dev/null || true
+    
+    # Install globally
+    if bun link 2>/dev/null; then
+        log_info "OpenCode linked globally"
+    else
+        # Fallback: add to PATH via .bashrc
+        local bin_path="$VENDOR_DIR/opencode/packages/opencode"
+        if [[ -f "$bin_path/dist/cli.js" ]]; then
+            echo "export PATH=\"$bin_path:\$PATH\"" >> "$HOME/.bashrc"
+            log_info "Added OpenCode to PATH in .bashrc"
+        fi
+    fi
+    
+    cd "$SCRIPT_DIR"
+}
+
+copy_agents() {
+    log_info "Setting up OpenAgents..."
+    
+    local opencode_dir="$HOME/.config/opencode"
+    local agents_src="$VENDOR_DIR/OpenAgents/.opencode"
+    
+    # Create directory structure
+    mkdir -p "$opencode_dir/.opencode"
+    
+    # Copy agent files if they exist
+    if [[ -d "$agents_src/agent" ]]; then
+        cp -r "$agents_src/agent" "$opencode_dir/.opencode/"
+        log_info "Copied agent definitions"
+    fi
+    
+    if [[ -d "$agents_src/command" ]]; then
+        cp -r "$agents_src/command" "$opencode_dir/.opencode/"
+        log_info "Copied command definitions"
+    fi
+    
+    if [[ -d "$agents_src/context" ]]; then
+        cp -r "$agents_src/context" "$opencode_dir/.opencode/"
+        log_info "Copied context files"
+    fi
+}
+
 main() {
     print_banner
 
-    # Step 0: Ensure submodules are initialized
-    log_header "Step 0: Checking Submodules"
+    # Step 1: Ensure submodules are initialized
+    log_header "Step 1: Checking Submodules"
     check_submodules
     log_info "Submodules ready"
-
-    # Step 1: Validate config
-    log_header "Step 1: Validating Configuration"
-    
-    source "$LIB_DIR/validate.sh"
-    if ! validate_config "$CONFIG_FILE"; then
-        log_error "Configuration validation failed. Please fix the errors above."
-        exit 1
-    fi
 
     # Step 2: Check/install dependencies
     if [[ "$SKIP_DEPS" == "false" ]]; then
         log_header "Step 2: Installing Dependencies"
         
-        source "$LIB_DIR/check-deps.sh"
-        check_all_deps
+        if [[ -f "$LIB_DIR/check-deps.sh" ]]; then
+            source "$LIB_DIR/check-deps.sh"
+            check_all_deps
+        else
+            # Minimal dependency check
+            if ! command -v bun &>/dev/null; then
+                log_error "Bun is required but not installed"
+                log_info "Install with: curl -fsSL https://bun.sh/install | bash"
+                exit 1
+            fi
+            if ! command -v go &>/dev/null; then
+                log_warn "Go is recommended for full functionality"
+            fi
+        fi
     else
         log_header "Step 2: Skipping Dependency Installation"
         log_warn "Skipping dependency installation (--skip-deps flag)"
     fi
 
-    # Step 3: Generate config files
-    log_header "Step 3: Generating Configuration Files"
-    
-    source "$LIB_DIR/generate-configs.sh"
-    generate_all_configs "$CONFIG_FILE" "$OPENCODE_CONFIG_DIR"
+    # Step 3: Install OpenCode
+    log_header "Step 3: Installing OpenCode"
+    install_opencode
 
-    # Step 4: Final summary
+    # Step 4: Copy OpenAgents
+    log_header "Step 4: Setting Up Agents"
+    copy_agents
+
+    # Step 5: Final summary
     log_header "Installation Complete!"
 
-    local tier
-    tier=$(jq -r '.tier // "frugal"' "$CONFIG_FILE")
-
-    echo -e "${GREEN}The Sovereign Agent pipeline has been configured successfully.${NC}"
+    echo -e "${GREEN}Sovereign Agent has been configured successfully.${NC}"
     echo
-    echo -e "${BOLD}Generated files:${NC}"
-    echo "  - $OPENCODE_CONFIG_DIR/opencode.jsonc"
-    echo "  - $OPENCODE_CONFIG_DIR/dcp.jsonc"
-    echo "  - $OPENCODE_CONFIG_DIR/.opencode/ (agents, commands, context)"
+    echo -e "${BOLD}Backend:${NC} GitHub Copilot (via Sovereign Relay)"
     echo
-    echo -e "${BOLD}Tier: ${GREEN}$tier${NC}"
-    echo
-    echo -e "${BOLD}Privacy:${NC}"
-    echo "  - Zero Data Retention (ZDR): ${GREEN}Enabled${NC}"
-    echo "  - Provider: OpenRouter"
+    echo -e "${BOLD}Config location:${NC}"
+    echo "  - $HOME/.config/opencode/opencode.jsonc"
+    echo "  - $HOME/.config/opencode/.opencode/ (agents, commands)"
     echo
     echo -e "${BOLD}Next steps:${NC}"
     echo "  1. Start a new shell session: ${BOLD}exec \$SHELL${NC}"
     echo "  2. Navigate to your project directory"
     echo "  3. Run: ${BOLD}opencode${NC}"
     echo
-    echo -e "${BOLD}Available agents:${NC}"
-    echo "  - @openagent - Universal orchestrator"
-    echo "  - @opencoder - Multi-language coding specialist"
-    echo "  - @reviewer  - Code review and security"
-    echo "  - @tester    - Test authoring with TDD"
+    echo -e "${BOLD}Model selection:${NC}"
+    echo "  Use /models in OpenCode to switch between models"
+    echo "  Default: gpt-5-mini (FREE - unlimited use)"
     echo
 }
 
