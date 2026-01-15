@@ -4,6 +4,9 @@
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/lachlan-jones5/sovereign-agent/master/scripts/setup-relay.sh | bash
 #
+# With custom options:
+#   curl -fsSL ... | RELAY_HOST=0.0.0.0 RELAY_PORT=8081 bash
+#
 # Environment variables:
 #   RELAY_PORT  - Port to listen on (default: 8080)
 #   RELAY_HOST  - Host to bind to (default: 127.0.0.1, use 0.0.0.0 for external)

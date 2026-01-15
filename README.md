@@ -32,6 +32,9 @@ Privacy-compliant AI coding environment. Keep your GitHub Copilot credentials se
 **One-liner:**
 ```bash
 curl -fsSL https://raw.githubusercontent.com/lachlan-jones5/sovereign-agent/master/scripts/setup-relay.sh | bash
+
+# With custom host/port:
+curl -fsSL ... | RELAY_HOST=0.0.0.0 RELAY_PORT=8081 bash
 ```
 
 **Or manually:**

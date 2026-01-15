@@ -37,16 +37,20 @@ Then just: `ssh relay -N &`
 
 ## Standalone Mode (No Relay)
 
-Run everything on one machine with API key local:
+Run everything on one machine (requires GitHub Copilot subscription):
 
 ```bash
 git clone --recurse-submodules https://github.com/lachlan-jones5/sovereign-agent.git
 cd sovereign-agent
 
-cp config.json.example config.json
-# Edit config.json: add openrouter_api_key, set relay.enabled=false
+# Start relay locally
+cd relay && bun run main.ts &
 
-./install.sh
+# Authenticate
+./scripts/auth-relay.sh
+
+# Install client
+curl -fsSL http://localhost:8080/setup | bash
 opencode
 ```
 
@@ -56,9 +60,13 @@ opencode
 git clone --recurse-submodules https://github.com/lachlan-jones5/sovereign-agent.git
 cd sovereign-agent
 
-cp config.json.example config.json
-# Edit config.json with API key
+# Start relay
+cd relay && bun run main.ts &
 
+# Authenticate
+./scripts/auth-relay.sh
+
+# Run via docker
 docker compose run --rm agent
 ```
 
@@ -70,14 +78,18 @@ Deploy relay to a VPS (DigitalOcean, Linode, etc.):
 # On VPS
 ssh root@your-vps.com
 
-# Install Docker
-curl -fsSL https://get.docker.com | sh
+# Install Bun (if not present)
+curl -fsSL https://bun.sh/install | bash
 
-# Setup relay
-OPENROUTER_API_KEY=sk-or-v1-... \
-RELAY_HOST=0.0.0.0 \
-RELAY_PORT=8081 \
-curl -fsSL https://raw.githubusercontent.com/lachlan-jones5/sovereign-agent/master/scripts/setup-relay.sh | bash
+# Setup relay with external access
+curl -fsSL https://raw.githubusercontent.com/lachlan-jones5/sovereign-agent/master/scripts/setup-relay.sh \
+  | RELAY_HOST=0.0.0.0 RELAY_PORT=8081 bash
+```
+
+Authenticate on the VPS:
+```bash
+cd ~/sovereign-agent
+./scripts/auth-relay.sh
 ```
 
 Then connect via SSH tunnel from anywhere:
@@ -95,7 +107,7 @@ One relay server can serve multiple clients:
 ┌──────────────┐
 │  Client A    │──┐
 └──────────────┘  │     ┌────────────────┐
-                  ├────▶│   Relay        │────▶ OpenRouter
+                  ├────▶│   Relay        │────▶ GitHub Copilot
 ┌──────────────┐  │     │   :8081        │
 │  Client B    │──┘     └────────────────┘
 └──────────────┘
