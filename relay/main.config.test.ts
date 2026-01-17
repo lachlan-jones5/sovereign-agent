@@ -642,6 +642,60 @@ describe("JSONC Comment Handling", () => {
   });
 });
 
+describe("DCP Plugin Configuration", () => {
+  const configs = [
+    { name: "free", path: FREE_CONFIG_PATH },
+    { name: "frugal", path: FRUGAL_CONFIG_PATH },
+    { name: "premium", path: PREMIUM_CONFIG_PATH },
+  ];
+
+  for (const { name, path } of configs) {
+    describe(`${name} tier`, () => {
+      let config: any;
+
+      beforeAll(() => {
+        if (existsSync(path)) {
+          config = parseJsonc(path);
+        }
+      });
+
+      it("should have plugin array defined", () => {
+        expect(config.plugin).toBeDefined();
+        expect(Array.isArray(config.plugin)).toBe(true);
+      });
+
+      it("should include DCP plugin", () => {
+        expect(config.plugin).toContain("@tarquinen/opencode-dcp@latest");
+      });
+
+      it("should use @latest version for auto-updates", () => {
+        const dcpPlugin = config.plugin.find((p: string) => p.includes("opencode-dcp"));
+        expect(dcpPlugin).toContain("@latest");
+      });
+    });
+  }
+
+  it("should have DCP plugin in all tiers", () => {
+    const allConfigs = configs.map(({ path }) => parseJsonc(path));
+    
+    for (const config of allConfigs) {
+      expect(config.plugin).toContain("@tarquinen/opencode-dcp@latest");
+    }
+  });
+
+  it("should have consistent plugin configuration across tiers", () => {
+    const allConfigs = configs.map(({ path }) => parseJsonc(path));
+    
+    // All tiers should have the same plugin array
+    const freePlugins = JSON.stringify(allConfigs[0].plugin);
+    const frugalPlugins = JSON.stringify(allConfigs[1].plugin);
+    const premiumPlugins = JSON.stringify(allConfigs[2].plugin);
+    
+    expect(freePlugins).toBe(frugalPlugins);
+    expect(frugalPlugins).toBe(premiumPlugins);
+  });
+});
+
 describe("Model Consistency", () => {
   it("should not use deprecated models", () => {
     const deprecatedModels = [

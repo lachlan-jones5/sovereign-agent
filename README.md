@@ -1,5 +1,3 @@
-# TODO: Fix the lack of DCP!
-
 # Sovereign Agent
 
 Privacy-compliant AI coding environment. Keep your GitHub Copilot credentials secure on a trusted machine while running [OpenCode](https://github.com/sst/opencode) anywhere.

@@ -16,6 +16,10 @@
   // =============================================================================
 
   "$schema": "https://opencode.ai/config.json",
+
+  // Dynamic Context Pruning - reduces token usage by removing obsolete tool outputs
+  // https://github.com/Opencode-DCP/opencode-dynamic-context-pruning
+  "plugin": ["@tarquinen/opencode-dcp@latest"],
   
   // =============================================================================
   // COMPACTION SETTINGS
