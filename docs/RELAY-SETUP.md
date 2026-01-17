@@ -149,6 +149,9 @@ curl http://localhost:8080/health
 | `RELAY_PORT` | `8080` | Port to listen on |
 | `CONFIG_PATH` | `../config.json` | Path to config file |
 | `LOG_LEVEL` | `info` | Log level: debug, info, warn, error |
+| `DATA_CAPTURE_ENABLED` | `false` | Enable request/response capture for fine-tuning |
+| `DATA_CAPTURE_PATH` | `../data/captures.jsonl` | Local JSONL file for captured sessions |
+| `DATA_CAPTURE_FORWARD_URL` | (none) | URL to forward captures (e.g., `http://localhost:9090/data/ingest`) |
 
 ## Docker Configuration
 
@@ -254,12 +257,16 @@ iptables -A INPUT -p tcp --dport 8080 -j ACCEPT
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/health` | GET | Returns `{"status":"ok","authenticated":bool}` |
-| `/stats` | GET | Request stats, uptime, premium usage |
+| `/stats` | GET | Request stats, uptime, premium usage, data capture status |
 | `/auth/device` | GET/POST | Start device code flow |
 | `/auth/poll` | POST | Poll for auth completion |
 | `/auth/status` | GET | Check auth status |
 | `/setup` | GET | Bash script for client setup |
 | `/bundle.tar.gz` | GET | Streamed tarball of repo |
+| `/data/stats` | GET | Data capture statistics |
+| `/data/recent` | GET | Recent captures (use `?limit=N`) |
+| `/data/export` | GET | Download all captures as JSONL |
+| `/data/ingest` | POST | Receive forwarded captures from remote relays |
 | `/v1/*` | ALL | Proxied to GitHub Copilot API |
 
 ## Monitoring
@@ -320,3 +327,4 @@ open http://localhost:8080/auth/device
 - [Architecture](ARCHITECTURE.md) - System overview
 - [Models](MODELS.md) - Available models and multipliers
 - [Troubleshooting](TROUBLESHOOTING.md) - Common issues and solutions
+- [Data Capture](DATA-CAPTURE.md) - Collecting training data for fine-tuning

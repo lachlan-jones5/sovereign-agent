@@ -27,7 +27,7 @@
  *   REPO_PATH   - Path to sovereign-agent repo (default: parent of relay dir)
  */
 
-import { existsSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, readFileSync, writeFileSync, appendFileSync, mkdirSync } from "fs";
 import { resolve, dirname } from "path";
 import { spawn } from "child_process";
 
@@ -92,6 +92,11 @@ const RELAY_PORT = parseInt(process.env.RELAY_PORT || "8080", 10);
 const RELAY_HOST = process.env.RELAY_HOST || "127.0.0.1";
 const LOG_LEVEL = process.env.LOG_LEVEL || "info";
 const REPO_PATH = process.env.REPO_PATH || resolve(import.meta.dir, "..");
+
+// Data capture configuration
+const DATA_CAPTURE_ENABLED = process.env.DATA_CAPTURE_ENABLED === "true" || process.env.DATA_CAPTURE_PATH || process.env.DATA_CAPTURE_FORWARD_URL;
+const DATA_CAPTURE_PATH = process.env.DATA_CAPTURE_PATH || resolve(import.meta.dir, "../data/captures.jsonl");
+const DATA_CAPTURE_FORWARD_URL = process.env.DATA_CAPTURE_FORWARD_URL || ""; // e.g., http://localhost:9090/ingest
 
 // GitHub Copilot constants
 const COPILOT_CLIENT_ID = "Iv1.b507a08c87ecfe98";
@@ -421,6 +426,103 @@ function getModelMultiplier(model: string): number {
   return MODEL_MULTIPLIERS[modelName] ?? 1;
 }
 
+// Data capture types and functions
+interface CapturedSession {
+  id: string
+  timestamp: string
+  endpoint: string
+  method: string
+  request: unknown
+  response: unknown
+  status: number
+  latency_ms: number
+  model: string
+  multiplier: number
+  stream: boolean
+}
+
+let captureCount = 0
+
+// Ensure data directory exists
+function ensureDataDir() {
+  const dataDir = dirname(DATA_CAPTURE_PATH)
+  if (!existsSync(dataDir)) {
+    mkdirSync(dataDir, { recursive: true })
+    log("info", `Created data capture directory: ${dataDir}`)
+  }
+}
+
+// Capture a request/response pair
+async function captureSession(session: CapturedSession): Promise<void> {
+  if (!DATA_CAPTURE_ENABLED) return
+
+  const jsonLine = JSON.stringify(session) + "\n"
+  captureCount++
+
+  // Save locally if path is configured
+  if (DATA_CAPTURE_PATH) {
+    try {
+      ensureDataDir()
+      appendFileSync(DATA_CAPTURE_PATH, jsonLine)
+      log("debug", `Captured session ${session.id} to ${DATA_CAPTURE_PATH}`)
+    } catch (err) {
+      log("error", `Failed to save capture locally: ${err}`)
+    }
+  }
+
+  // Forward via tunnel if URL is configured
+  if (DATA_CAPTURE_FORWARD_URL) {
+    try {
+      const res = await fetch(DATA_CAPTURE_FORWARD_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(session),
+      })
+      if (!res.ok) {
+        log("warn", `Forward capture failed: ${res.status} ${res.statusText}`)
+      } else {
+        log("debug", `Forwarded session ${session.id} to ${DATA_CAPTURE_FORWARD_URL}`)
+      }
+    } catch (err) {
+      log("warn", `Failed to forward capture: ${err}`)
+    }
+  }
+}
+
+// Collect streaming response chunks into full response body
+async function collectStreamingResponse(response: Response): Promise<{ body: string; clonedResponse: Response }> {
+  const chunks: Uint8Array[] = []
+  const reader = response.body?.getReader()
+  
+  if (!reader) {
+    return { body: "", clonedResponse: response }
+  }
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    if (value) chunks.push(value)
+  }
+
+  const fullBody = new TextDecoder().decode(
+    chunks.reduce((acc, chunk) => {
+      const combined = new Uint8Array(acc.length + chunk.length)
+      combined.set(acc)
+      combined.set(chunk, acc.length)
+      return combined
+    }, new Uint8Array())
+  )
+
+  // Create a new response with the same body for returning to client
+  const clonedResponse = new Response(fullBody, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  })
+
+  return { body: fullBody, clonedResponse }
+}
+
 // Start the relay server
 Bun.serve({
   port: RELAY_PORT,
@@ -469,11 +571,160 @@ Bun.serve({
           premium_requests_used: premiumRequestsUsed,
           authenticated: hasGitHubAuth(),
           uptime: process.uptime(),
+          data_capture: {
+            enabled: DATA_CAPTURE_ENABLED,
+            captures: captureCount,
+            local_path: DATA_CAPTURE_PATH || null,
+            forward_url: DATA_CAPTURE_FORWARD_URL || null,
+          },
         }),
         {
           headers: { "Content-Type": "application/json", ...corsHeaders },
         }
       );
+    }
+
+    // Data capture endpoints
+    if (path === "/data/stats") {
+      let fileSize = 0;
+      let lineCount = 0;
+      
+      if (DATA_CAPTURE_PATH && existsSync(DATA_CAPTURE_PATH)) {
+        try {
+          const content = readFileSync(DATA_CAPTURE_PATH, "utf-8");
+          fileSize = Buffer.byteLength(content, "utf-8");
+          lineCount = content.split("\n").filter(line => line.trim()).length;
+        } catch {
+          // Ignore read errors
+        }
+      }
+      
+      return new Response(
+        JSON.stringify({
+          enabled: DATA_CAPTURE_ENABLED,
+          captures: captureCount,
+          local_path: DATA_CAPTURE_PATH || null,
+          forward_url: DATA_CAPTURE_FORWARD_URL || null,
+          file_size_bytes: fileSize,
+          file_lines: lineCount,
+        }),
+        {
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    // Download captured data as JSONL
+    if (path === "/data/export") {
+      if (!DATA_CAPTURE_PATH || !existsSync(DATA_CAPTURE_PATH)) {
+        return new Response(
+          JSON.stringify({ error: "No capture file found", path: DATA_CAPTURE_PATH }),
+          {
+            status: 404,
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+          }
+        );
+      }
+
+      try {
+        const content = readFileSync(DATA_CAPTURE_PATH, "utf-8");
+        return new Response(content, {
+          headers: {
+            "Content-Type": "application/x-ndjson",
+            "Content-Disposition": `attachment; filename=captures-${new Date().toISOString().split("T")[0]}.jsonl`,
+            ...corsHeaders,
+          },
+        });
+      } catch (err) {
+        return new Response(
+          JSON.stringify({ error: "Failed to read capture file", details: String(err) }),
+          {
+            status: 500,
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+          }
+        );
+      }
+    }
+
+    // View recent captures (last N)
+    if (path === "/data/recent") {
+      const limit = parseInt(url.searchParams.get("limit") || "10", 10);
+      
+      if (!DATA_CAPTURE_PATH || !existsSync(DATA_CAPTURE_PATH)) {
+        return new Response(
+          JSON.stringify({ captures: [], total: 0 }),
+          {
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+          }
+        );
+      }
+
+      try {
+        const content = readFileSync(DATA_CAPTURE_PATH, "utf-8");
+        const lines = content.split("\n").filter(line => line.trim());
+        const recent = lines.slice(-limit).reverse().map(line => {
+          try {
+            return JSON.parse(line);
+          } catch {
+            return { raw: line };
+          }
+        });
+        
+        return new Response(
+          JSON.stringify({ captures: recent, total: lines.length }),
+          {
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+          }
+        );
+      } catch (err) {
+        return new Response(
+          JSON.stringify({ error: "Failed to read captures", details: String(err) }),
+          {
+            status: 500,
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+          }
+        );
+      }
+    }
+
+    // Ingest endpoint - receives forwarded captures from other relays
+    if (path === "/data/ingest" && method === "POST") {
+      if (!DATA_CAPTURE_ENABLED) {
+        return new Response(
+          JSON.stringify({ error: "Data capture not enabled on this relay" }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+          }
+        );
+      }
+
+      try {
+        const session = await req.json() as CapturedSession;
+        
+        // Save locally
+        ensureDataDir();
+        appendFileSync(DATA_CAPTURE_PATH, JSON.stringify(session) + "\n");
+        captureCount++;
+        
+        log("info", `Ingested session ${session.id} from remote`);
+        
+        return new Response(
+          JSON.stringify({ success: true, id: session.id }),
+          {
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+          }
+        );
+      } catch (err) {
+        log("error", `Ingest failed: ${err}`);
+        return new Response(
+          JSON.stringify({ error: "Ingest failed", details: String(err) }),
+          {
+            status: 500,
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+          }
+        );
+      }
     }
 
     // Auth status endpoint
@@ -972,13 +1223,16 @@ echo ""
 
         // Parse request body to extract model for tracking
         let requestBody: string | null = null;
+        let requestParsed: unknown = null;
         let model = "unknown";
+        let isStreaming = false;
         
         if (req.body && method === "POST") {
           requestBody = await req.text();
           try {
-            const parsed = JSON.parse(requestBody);
-            model = parsed.model || "unknown";
+            requestParsed = JSON.parse(requestBody);
+            model = (requestParsed as { model?: string }).model || "unknown";
+            isStreaming = (requestParsed as { stream?: boolean }).stream === true;
           } catch {
             // Ignore parse errors
           }
@@ -1002,7 +1256,8 @@ echo ""
         const multiplier = getModelMultiplier(model);
         premiumRequestsUsed += multiplier;
         
-        log("info", `Forwarding: ${method} ${path} -> ${apiBase} (model: ${model}, multiplier: ${multiplier}x)`);
+        const startTime = Date.now();
+        log("info", `Forwarding: ${method} ${path} -> ${apiBase} (model: ${model}, multiplier: ${multiplier}x, stream: ${isStreaming})`);
 
         // Forward the request
         const response = await fetch(targetUrl, {
@@ -1011,14 +1266,56 @@ echo ""
           body: requestBody,
         });
 
-        log("info", `Response: ${response.status} ${response.statusText}`);
+        const latency = Date.now() - startTime;
+        log("info", `Response: ${response.status} ${response.statusText} (${latency}ms)`);
 
-        // Return the response as-is (streaming works automatically)
+        // Build response headers
         const responseHeaders = new Headers(response.headers);
         for (const [key, value] of Object.entries(corsHeaders)) {
           responseHeaders.set(key, value);
         }
 
+        // Data capture: collect response body and capture session
+        if (DATA_CAPTURE_ENABLED) {
+          const sessionId = crypto.randomUUID();
+          
+          // For streaming responses, we need to collect all chunks
+          const { body: responseBody, clonedResponse } = await collectStreamingResponse(response);
+          
+          // Parse response if possible
+          let responseParsed: unknown = responseBody;
+          try {
+            // For streaming, the body is SSE format - keep as string
+            if (!isStreaming) {
+              responseParsed = JSON.parse(responseBody);
+            }
+          } catch {
+            // Keep as string if not valid JSON
+          }
+
+          // Capture asynchronously (don't block response)
+          captureSession({
+            id: sessionId,
+            timestamp: new Date().toISOString(),
+            endpoint: path,
+            method,
+            request: requestParsed || requestBody,
+            response: responseParsed,
+            status: response.status,
+            latency_ms: latency,
+            model,
+            multiplier,
+            stream: isStreaming,
+          }).catch(err => log("error", `Capture failed: ${err}`));
+
+          return new Response(clonedResponse.body, {
+            status: clonedResponse.status,
+            statusText: clonedResponse.statusText,
+            headers: responseHeaders,
+          });
+        }
+
+        // No capture - return response as-is (streaming works automatically)
         return new Response(response.body, {
           status: response.status,
           statusText: response.statusText,
@@ -1065,3 +1362,17 @@ if (!hasGitHubAuth()) {
   log("info", `To authenticate, visit: http://${RELAY_HOST}:${RELAY_PORT}/auth/device`);
 }
 log("info", `Client setup available at /setup and /bundle.tar.gz`);
+
+// Data capture status
+if (DATA_CAPTURE_ENABLED) {
+  log("info", `Data capture: ENABLED`);
+  if (DATA_CAPTURE_PATH) {
+    log("info", `  Local storage: ${DATA_CAPTURE_PATH}`);
+  }
+  if (DATA_CAPTURE_FORWARD_URL) {
+    log("info", `  Forward URL: ${DATA_CAPTURE_FORWARD_URL}`);
+  }
+  log("info", `  Endpoints: /data/stats, /data/recent, /data/export, /data/ingest`);
+} else {
+  log("info", `Data capture: disabled (set DATA_CAPTURE_ENABLED=true to enable)`);
+}

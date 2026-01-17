@@ -1,6 +1,10 @@
 # Configuration files with secrets
 config.json
 
+# Data capture (sensitive training data)
+data/
+*.jsonl
+
 # Generated configs
 .config/
 
